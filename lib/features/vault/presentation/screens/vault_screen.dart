@@ -74,6 +74,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
             icon: const Icon(Icons.assessment_outlined),
             onPressed: () => context.push('/reports'),
           ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push('/settings'),
+          ),
           Container(
             margin: const EdgeInsets.only(right: 12),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

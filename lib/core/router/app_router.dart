@@ -4,7 +4,10 @@ import 'package:slip_vault/features/detail/presentation/screens/detail_screen.da
 import 'package:slip_vault/features/export/presentation/screens/reports_screen.dart';
 import 'package:slip_vault/features/import/presentation/screens/import_screen.dart';
 import 'package:slip_vault/features/import/presentation/screens/review_screen.dart';
+import 'package:slip_vault/features/onboarding/presentation/screens/onboarding_screen.dart';
+import 'package:slip_vault/features/paywall/presentation/screens/paywall_screen.dart';
 import 'package:slip_vault/features/search/presentation/screens/search_screen.dart';
+import 'package:slip_vault/features/settings/presentation/screens/settings_screen.dart';
 import 'package:slip_vault/features/vault/presentation/screens/vault_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -46,6 +49,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/reports',
         name: 'reports',
         builder: (context, state) => const ReportsScreen(),
+      ),
+      GoRoute(
+        path: '/paywall',
+        name: 'paywall',
+        builder: (context, state) => const PaywallScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        name: 'settings',
+        builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        name: 'onboarding',
+        builder: (context, state) => const OnboardingScreen(),
       ),
     ],
   );
