@@ -127,9 +127,9 @@ class GenericParser implements SlipParser {
   }
 
   String? _extractCounterparty(String text, Map<String, double> conf) {
-    // Matches: "To: John Doe", "From: Kashif Electronics", "Sent to: Ali"
+    // Matches: "To: John Doe", "From: Kashif Electronics", "Sent to: Ali", "Paid to: K-Electric Ltd"
     final regex = RegExp(
-      r'(?:To|From|Sent\s+to|Received\s+from|Paid\s+to)[:\s]+([A-Za-z\s]{3,30})',
+      r'(?:To|From|Sent\s+to|Received\s+from|Paid\s+to)[:\s]+([A-Za-z0-9\s&.-]{3,40})',
       caseSensitive: false,
     );
     final match = regex.firstMatch(text);
