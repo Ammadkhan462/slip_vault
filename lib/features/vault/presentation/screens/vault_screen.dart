@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:slip_vault/core/theme/app_theme.dart';
 import 'package:slip_vault/l10n/app_localizations.dart';
 
@@ -55,6 +56,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () => context.push('/search'),
+          ),
           Container(
             margin: const EdgeInsets.only(right: 12),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -320,7 +325,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primaryContainer,
         foregroundColor: Colors.white,
-        onPressed: () {},
+        onPressed: () => context.push('/import'),
         icon: const Icon(Icons.add_photo_alternate_outlined),
         label: Text(l10n?.importScreenshots ?? 'Import'),
       ),
