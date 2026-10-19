@@ -12,6 +12,9 @@
 -dontwarn com.google.android.gms.**
 -dontwarn com.google.mlkit.**
 
+# Google Play Core & Flutter Deferred Components
+-dontwarn com.google.android.play.core.**
+
 # Drift & SQLite
 -keep class net.sqlcipher.** { *; }
 -keep class org.sqlite.** { *; }
@@ -19,5 +22,5 @@
 # Local Auth Biometrics
 -keep class androidx.biometric.** { *; }
 
-# Share Plus & Path Provider
+# Share Plus & Notifications
 -keep class com.dexterous.flutterlocalnotifications.** { *; }
