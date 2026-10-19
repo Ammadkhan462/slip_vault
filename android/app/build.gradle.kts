@@ -85,3 +85,14 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+gradle.projectsEvaluated {
+    tasks.findByName("assembleDebug")?.doLast {
+        val buildDir = layout.buildDirectory.get().asFile
+        val coreApk = File(buildDir, "outputs/flutter-apk/app-core-debug.apk")
+        val fallbackApk = File(buildDir, "outputs/flutter-apk/app-debug.apk")
+        if (coreApk.exists()) {
+            coreApk.copyTo(fallbackApk, overwrite = true)
+        }
+    }
+}

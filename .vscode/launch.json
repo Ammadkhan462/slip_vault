@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Slip Vault (Core Flavor - Default)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--flavor",
+        "core"
+      ]
+    },
+    {
+      "name": "Slip Vault (AutoScan Flavor)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--flavor",
+        "autoscan"
+      ]
+    }
+  ]
+}
