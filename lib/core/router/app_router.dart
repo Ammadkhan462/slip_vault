@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:slip_vault/features/detail/presentation/screens/detail_screen.dart';
+import 'package:slip_vault/features/export/presentation/screens/reports_screen.dart';
 import 'package:slip_vault/features/import/presentation/screens/import_screen.dart';
 import 'package:slip_vault/features/import/presentation/screens/review_screen.dart';
 import 'package:slip_vault/features/search/presentation/screens/search_screen.dart';
@@ -31,6 +33,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
           return ReviewScreen(entryId: id);
         },
+      ),
+      GoRoute(
+        path: '/detail/:id',
+        name: 'detail',
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '0') ?? 0;
+          return DetailScreen(entryId: id);
+        },
+      ),
+      GoRoute(
+        path: '/reports',
+        name: 'reports',
+        builder: (context, state) => const ReportsScreen(),
       ),
     ],
   );
