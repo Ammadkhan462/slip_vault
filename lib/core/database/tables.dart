@@ -23,6 +23,7 @@ class Entries extends Table {
   DateTimeColumn get occurredAt => dateTime().nullable()();
   TextColumn get ocrText => text().withDefault(const Constant(''))();
   TextColumn get note => text().nullable()();
+  TextColumn get category => text().nullable()();
   TextColumn get confidenceJson => text().nullable()();
   BoolColumn get needsReview => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();

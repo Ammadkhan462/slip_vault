@@ -1,10 +1,14 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:slip_vault/core/database/app_database.dart';
+import 'package:slip_vault/core/database/tables.dart';
 import 'package:slip_vault/core/providers/database_provider.dart';
 import 'package:slip_vault/core/theme/app_theme.dart';
 import 'package:slip_vault/core/widgets/vault_bottom_bar.dart';
 import 'package:slip_vault/features/export/data/report_export_service.dart';
+import 'package:slip_vault/features/reports/presentation/widgets/report_charts.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -35,93 +39,110 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         title: const Text('Monthly Reports'),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          children: [
-            // Month Selector Bar (Modern Pill)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight,
-                borderRadius: BorderRadius.circular(9999),
-                border: Border.all(
-                  color: isDark ? AppColors.outlineVariantDark.withAlpha(50) : AppColors.outlineVariantLight.withAlpha(50),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left, size: 20),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () {
-                      setState(() {
-                        if (_selectedMonth == 1) {
-                          _selectedMonth = 12;
-                          _selectedYear--;
-                        } else {
-                          _selectedMonth--;
-                        }
-                      });
-                    },
+        child: StreamBuilder<List<Entry>>(
+          stream: db.select(db.entries).watch(),
+          builder: (context, snapshot) {
+            final allEntries = snapshot.data ?? [];
+
+            // Filter entries for the selected month
+            final monthEntries = allEntries.where((e) {
+              final d = e.occurredAt ?? e.createdAt;
+              return d.year == _selectedYear && d.month == _selectedMonth;
+            }).toList();
+
+            int received = 0;
+            int sent = 0;
+            for (final e in monthEntries) {
+              if (e.amountMinor != null) {
+                if (e.direction == Direction.received) {
+                  received += e.amountMinor!;
+                } else if (e.direction == Direction.sent) {
+                  sent += e.amountMinor!;
+                }
+              }
+            }
+            final net = received - sent;
+
+            return ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              children: [
+                // Month Selector Bar (Modern Pill)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight,
+                    borderRadius: BorderRadius.circular(9999),
+                    border: Border.all(
+                      color: isDark ? AppColors.outlineVariantDark.withAlpha(50) : AppColors.outlineVariantLight.withAlpha(50),
+                    ),
                   ),
-                  Row(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(Icons.calendar_month, size: 18, color: AppColors.primaryContainer),
-                      const SizedBox(width: 6),
-                      Text(
-                        monthLabel,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.2,
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left, size: 20),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          setState(() {
+                            if (_selectedMonth == 1) {
+                              _selectedMonth = 12;
+                              _selectedYear--;
+                            } else {
+                              _selectedMonth--;
+                            }
+                          });
+                        },
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryContainer.withAlpha(30),
-                          borderRadius: BorderRadius.circular(9999),
-                        ),
-                        child: const Text(
-                          'Audited',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryContainer,
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_month, size: 18, color: AppColors.primaryContainer),
+                          const SizedBox(width: 6),
+                          Text(
+                            monthLabel,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.2,
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryContainer.withAlpha(30),
+                              borderRadius: BorderRadius.circular(9999),
+                            ),
+                            child: const Text(
+                              'Audited',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryContainer,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right, size: 20),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          setState(() {
+                            if (_selectedMonth == 12) {
+                              _selectedMonth = 1;
+                              _selectedYear++;
+                            } else {
+                              _selectedMonth++;
+                            }
+                          });
+                        },
                       ),
                     ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right, size: 20),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () {
-                      setState(() {
-                        if (_selectedMonth == 12) {
-                          _selectedMonth = 1;
-                          _selectedYear++;
-                        } else {
-                          _selectedMonth++;
-                        }
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+                ),
+                const SizedBox(height: 16),
 
-            // Hero Monthly Totals Card
-            FutureBuilder<Map<String, int>>(
-              future: db.getMonthlyTotals(_selectedYear, _selectedMonth),
-              builder: (context, snapshot) {
-                final received = snapshot.data?['received'] ?? 0;
-                final sent = snapshot.data?['sent'] ?? 0;
-                final net = received - sent;
-
-                return Container(
+                // Hero Monthly Totals Card
+                Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
@@ -272,73 +293,87 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       ),
                     ],
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Export Actions
-            Text('EXPORT FORMATS', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-            const SizedBox(height: 10),
-
-            // Export PDF
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryContainer.withAlpha(25),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.picture_as_pdf, color: AppColors.primaryContainer, size: 24),
                 ),
-                title: const Text('Export Statement as PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                subtitle: const Text('Formatted A4 ledger table with totals for printing or tax proof.', style: TextStyle(fontSize: 12)),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                onTap: _isExporting ? null : () => _exportPdf(monthLabel),
-              ),
-            ),
-            const SizedBox(height: 10),
+                const SizedBox(height: 16),
 
-            // Export CSV
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.tertiary.withAlpha(25),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.table_view, color: AppColors.tertiary, size: 24),
+                // 6-Month Visual Trend Bar Chart
+                SixMonthCashFlowChart(
+                  allEntries: allEntries,
+                  selectedYear: _selectedYear,
+                  selectedMonth: _selectedMonth,
                 ),
-                title: const Text('Export Spreadsheet as CSV', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                subtitle: const Text('UTF-8 with Excel BOM compatibility for spreadsheets and accounting.', style: TextStyle(fontSize: 12)),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                onTap: _isExporting ? null : () => _exportCsv(monthLabel),
-              ),
-            ),
-          ],
+                const SizedBox(height: 16),
+
+                // Top 5 Counterparties / Payees
+                TopCounterpartiesWidget(monthEntries: monthEntries),
+                const SizedBox(height: 16),
+
+                // Spending by Category Breakdown
+                CategoryBreakdownWidget(monthEntries: monthEntries),
+                const SizedBox(height: 24),
+
+                // Export Actions
+                Text('EXPORT FORMATS', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                const SizedBox(height: 10),
+
+                // Export PDF
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryContainer.withAlpha(25),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.picture_as_pdf, color: AppColors.primaryContainer, size: 24),
+                    ),
+                    title: const Text('Export Statement as PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    subtitle: const Text('Formatted A4 ledger table with totals for printing or tax proof.', style: TextStyle(fontSize: 12)),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                    onTap: _isExporting ? null : () => _exportPdf(monthLabel, monthEntries, received, sent),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Export CSV
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.tertiary.withAlpha(25),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.table_view, color: AppColors.tertiary, size: 24),
+                    ),
+                    title: const Text('Export Spreadsheet as CSV', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    subtitle: const Text('UTF-8 with Excel BOM compatibility for spreadsheets and accounting.', style: TextStyle(fontSize: 12)),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                    onTap: _isExporting ? null : () => _exportCsv(monthLabel, monthEntries),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            );
+          },
         ),
       ),
       bottomNavigationBar: const VaultBottomBar(currentIndex: 2),
     );
   }
 
-  Future<void> _exportPdf(String monthLabel) async {
+  Future<void> _exportPdf(String monthLabel, List<Entry> entries, int received, int sent) async {
     setState(() => _isExporting = true);
     try {
-      final db = ref.read(databaseProvider);
-      final entries = await db.select(db.entries).get();
-      final totals = await db.getMonthlyTotals(_selectedYear, _selectedMonth);
       final file = await ReportExportService.generatePdfReport(
         entries: entries,
         monthLabel: monthLabel,
-        totalReceivedMinor: totals['received'] ?? 0,
-        totalSentMinor: totals['sent'] ?? 0,
+        totalReceivedMinor: received,
+        totalSentMinor: sent,
       );
       await SharePlus.instance.share(
         ShareParams(
@@ -351,11 +386,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     }
   }
 
-  Future<void> _exportCsv(String monthLabel) async {
+  Future<void> _exportCsv(String monthLabel, List<Entry> entries) async {
     setState(() => _isExporting = true);
     try {
-      final db = ref.read(databaseProvider);
-      final entries = await db.select(db.entries).get();
       final file = await ReportExportService.generateCsvReport(entries: entries, monthLabel: monthLabel);
       await SharePlus.instance.share(
         ShareParams(

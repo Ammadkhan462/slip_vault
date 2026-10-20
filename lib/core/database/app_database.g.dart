@@ -174,6 +174,17 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _confidenceJsonMeta = const VerificationMeta(
     'confidenceJson',
   );
@@ -241,6 +252,7 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
     occurredAt,
     ocrText,
     note,
+    category,
     confidenceJson,
     needsReview,
     createdAt,
@@ -349,6 +361,12 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
     if (data.containsKey('confidence_json')) {
       context.handle(
         _confidenceJsonMeta,
@@ -452,6 +470,10 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      ),
       confidenceJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}confidence_json'],
@@ -498,6 +520,7 @@ class Entry extends DataClass implements Insertable<Entry> {
   final DateTime? occurredAt;
   final String ocrText;
   final String? note;
+  final String? category;
   final String? confidenceJson;
   final bool needsReview;
   final DateTime createdAt;
@@ -518,6 +541,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     this.occurredAt,
     required this.ocrText,
     this.note,
+    this.category,
     this.confidenceJson,
     required this.needsReview,
     required this.createdAt,
@@ -565,6 +589,9 @@ class Entry extends DataClass implements Insertable<Entry> {
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
     if (!nullToAbsent || confidenceJson != null) {
       map['confidence_json'] = Variable<String>(confidenceJson);
     }
@@ -606,6 +633,9 @@ class Entry extends DataClass implements Insertable<Entry> {
           : Value(occurredAt),
       ocrText: Value(ocrText),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
       confidenceJson: confidenceJson == null && nullToAbsent
           ? const Value.absent()
           : Value(confidenceJson),
@@ -642,6 +672,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       occurredAt: serializer.fromJson<DateTime?>(json['occurredAt']),
       ocrText: serializer.fromJson<String>(json['ocrText']),
       note: serializer.fromJson<String?>(json['note']),
+      category: serializer.fromJson<String?>(json['category']),
       confidenceJson: serializer.fromJson<String?>(json['confidenceJson']),
       needsReview: serializer.fromJson<bool>(json['needsReview']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -673,6 +704,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       'occurredAt': serializer.toJson<DateTime?>(occurredAt),
       'ocrText': serializer.toJson<String>(ocrText),
       'note': serializer.toJson<String?>(note),
+      'category': serializer.toJson<String?>(category),
       'confidenceJson': serializer.toJson<String?>(confidenceJson),
       'needsReview': serializer.toJson<bool>(needsReview),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -696,6 +728,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     Value<DateTime?> occurredAt = const Value.absent(),
     String? ocrText,
     Value<String?> note = const Value.absent(),
+    Value<String?> category = const Value.absent(),
     Value<String?> confidenceJson = const Value.absent(),
     bool? needsReview,
     DateTime? createdAt,
@@ -722,6 +755,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     occurredAt: occurredAt.present ? occurredAt.value : this.occurredAt,
     ocrText: ocrText ?? this.ocrText,
     note: note.present ? note.value : this.note,
+    category: category.present ? category.value : this.category,
     confidenceJson: confidenceJson.present
         ? confidenceJson.value
         : this.confidenceJson,
@@ -756,6 +790,7 @@ class Entry extends DataClass implements Insertable<Entry> {
           : this.occurredAt,
       ocrText: data.ocrText.present ? data.ocrText.value : this.ocrText,
       note: data.note.present ? data.note.value : this.note,
+      category: data.category.present ? data.category.value : this.category,
       confidenceJson: data.confidenceJson.present
           ? data.confidenceJson.value
           : this.confidenceJson,
@@ -785,6 +820,7 @@ class Entry extends DataClass implements Insertable<Entry> {
           ..write('occurredAt: $occurredAt, ')
           ..write('ocrText: $ocrText, ')
           ..write('note: $note, ')
+          ..write('category: $category, ')
           ..write('confidenceJson: $confidenceJson, ')
           ..write('needsReview: $needsReview, ')
           ..write('createdAt: $createdAt, ')
@@ -810,6 +846,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     occurredAt,
     ocrText,
     note,
+    category,
     confidenceJson,
     needsReview,
     createdAt,
@@ -834,6 +871,7 @@ class Entry extends DataClass implements Insertable<Entry> {
           other.occurredAt == this.occurredAt &&
           other.ocrText == this.ocrText &&
           other.note == this.note &&
+          other.category == this.category &&
           other.confidenceJson == this.confidenceJson &&
           other.needsReview == this.needsReview &&
           other.createdAt == this.createdAt &&
@@ -856,6 +894,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
   final Value<DateTime?> occurredAt;
   final Value<String> ocrText;
   final Value<String?> note;
+  final Value<String?> category;
   final Value<String?> confidenceJson;
   final Value<bool> needsReview;
   final Value<DateTime> createdAt;
@@ -876,6 +915,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.occurredAt = const Value.absent(),
     this.ocrText = const Value.absent(),
     this.note = const Value.absent(),
+    this.category = const Value.absent(),
     this.confidenceJson = const Value.absent(),
     this.needsReview = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -897,6 +937,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.occurredAt = const Value.absent(),
     this.ocrText = const Value.absent(),
     this.note = const Value.absent(),
+    this.category = const Value.absent(),
     this.confidenceJson = const Value.absent(),
     this.needsReview = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -919,6 +960,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Expression<DateTime>? occurredAt,
     Expression<String>? ocrText,
     Expression<String>? note,
+    Expression<String>? category,
     Expression<String>? confidenceJson,
     Expression<bool>? needsReview,
     Expression<DateTime>? createdAt,
@@ -941,6 +983,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       if (occurredAt != null) 'occurred_at': occurredAt,
       if (ocrText != null) 'ocr_text': ocrText,
       if (note != null) 'note': note,
+      if (category != null) 'category': category,
       if (confidenceJson != null) 'confidence_json': confidenceJson,
       if (needsReview != null) 'needs_review': needsReview,
       if (createdAt != null) 'created_at': createdAt,
@@ -964,6 +1007,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Value<DateTime?>? occurredAt,
     Value<String>? ocrText,
     Value<String?>? note,
+    Value<String?>? category,
     Value<String?>? confidenceJson,
     Value<bool>? needsReview,
     Value<DateTime>? createdAt,
@@ -986,6 +1030,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       occurredAt: occurredAt ?? this.occurredAt,
       ocrText: ocrText ?? this.ocrText,
       note: note ?? this.note,
+      category: category ?? this.category,
       confidenceJson: confidenceJson ?? this.confidenceJson,
       needsReview: needsReview ?? this.needsReview,
       createdAt: createdAt ?? this.createdAt,
@@ -1047,6 +1092,9 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
     if (confidenceJson.present) {
       map['confidence_json'] = Variable<String>(confidenceJson.value);
     }
@@ -1080,6 +1128,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
           ..write('occurredAt: $occurredAt, ')
           ..write('ocrText: $ocrText, ')
           ..write('note: $note, ')
+          ..write('category: $category, ')
           ..write('confidenceJson: $confidenceJson, ')
           ..write('needsReview: $needsReview, ')
           ..write('createdAt: $createdAt, ')
@@ -1814,6 +1863,7 @@ typedef $$EntriesTableCreateCompanionBuilder = EntriesCompanion Function({
   Value<DateTime?> occurredAt,
   Value<String> ocrText,
   Value<String?> note,
+  Value<String?> category,
   Value<String?> confidenceJson,
   Value<bool> needsReview,
   Value<DateTime> createdAt,
@@ -1835,6 +1885,7 @@ typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<DateTime?> occurredAt,
   Value<String> ocrText,
   Value<String?> note,
+  Value<String?> category,
   Value<String?> confidenceJson,
   Value<bool> needsReview,
   Value<DateTime> createdAt,
@@ -1947,6 +1998,11 @@ class $$EntriesTableFilterComposer
 
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2080,6 +2136,11 @@ class $$EntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get confidenceJson => $composableBuilder(
     column: $table.confidenceJson,
     builder: (column) => ColumnOrderings(column),
@@ -2164,6 +2225,9 @@ class $$EntriesTableAnnotationComposer
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
 
   GeneratedColumn<String> get confidenceJson => $composableBuilder(
     column: $table.confidenceJson,
@@ -2250,6 +2314,7 @@ class $$EntriesTableTableManager
                 Value<DateTime?> occurredAt = const Value.absent(),
                 Value<String> ocrText = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<String?> category = const Value.absent(),
                 Value<String?> confidenceJson = const Value.absent(),
                 Value<bool> needsReview = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -2270,6 +2335,7 @@ class $$EntriesTableTableManager
                 occurredAt: occurredAt,
                 ocrText: ocrText,
                 note: note,
+                category: category,
                 confidenceJson: confidenceJson,
                 needsReview: needsReview,
                 createdAt: createdAt,
@@ -2292,6 +2358,7 @@ class $$EntriesTableTableManager
                 Value<DateTime?> occurredAt = const Value.absent(),
                 Value<String> ocrText = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<String?> category = const Value.absent(),
                 Value<String?> confidenceJson = const Value.absent(),
                 Value<bool> needsReview = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -2312,6 +2379,7 @@ class $$EntriesTableTableManager
                 occurredAt: occurredAt,
                 ocrText: ocrText,
                 note: note,
+                category: category,
                 confidenceJson: confidenceJson,
                 needsReview: needsReview,
                 createdAt: createdAt,

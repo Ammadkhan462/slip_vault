@@ -7,6 +7,8 @@ import 'package:slip_vault/core/database/app_database.dart';
 import 'package:slip_vault/core/database/tables.dart';
 import 'package:slip_vault/core/providers/database_provider.dart';
 import 'package:slip_vault/core/theme/app_theme.dart';
+import 'package:slip_vault/features/categories/domain/category_model.dart';
+import 'package:slip_vault/features/import/domain/duplicate_detector.dart';
 import 'package:slip_vault/features/import/domain/generic_parser.dart';
 
 class ReviewScreen extends ConsumerStatefulWidget {
@@ -20,13 +22,16 @@ class ReviewScreen extends ConsumerStatefulWidget {
 
 class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   Entry? _entry;
+  DuplicateMatch? _duplicateMatch;
   late TextEditingController _amountController;
   late TextEditingController _counterpartyController;
   late TextEditingController _accountController;
   late TextEditingController _tidController;
+  late TextEditingController _noteController;
   String _direction = 'received';
   String? _provider;
   String _currency = 'PKR';
+  String _category = 'General';
   bool _isReceipt = true;
   Map<String, double> _confidences = {};
 
@@ -37,7 +42,18 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     _counterpartyController = TextEditingController();
     _accountController = TextEditingController();
     _tidController = TextEditingController();
+    _noteController = TextEditingController();
     _loadEntry();
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _counterpartyController.dispose();
+    _accountController.dispose();
+    _tidController.dispose();
+    _noteController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadEntry() async {
@@ -51,6 +67,13 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       _direction = entry.direction != Direction.unknown ? entry.direction.name : parsed.direction;
       _provider = entry.provider ?? parsed.provider ?? 'JazzCash';
       _currency = entry.currency.isNotEmpty ? entry.currency : parsed.currency;
+      _category = entry.category ??
+          SlipCategories.detect(
+            ocrText: entry.ocrText,
+            counterparty: parsed.counterpartyName,
+            provider: parsed.provider,
+            direction: _direction,
+          );
       _isReceipt = parsed.isReceipt;
       _confidences = parsed.fieldConfidences;
 
@@ -61,6 +84,17 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       _counterpartyController.text = entry.counterpartyName ?? parsed.counterpartyName ?? '';
       _accountController.text = entry.counterpartyAccountMasked ?? parsed.counterpartyAccountMasked ?? '';
       _tidController.text = entry.transactionId ?? parsed.transactionId ?? '';
+      _noteController.text = entry.note ?? '';
+
+      _duplicateMatch = await DuplicateDetector.checkDuplicate(
+        db,
+        transactionId: entry.transactionId ?? parsed.transactionId,
+        amountMinor: amount,
+        counterpartyName: entry.counterpartyName ?? parsed.counterpartyName,
+        occurredAt: entry.occurredAt,
+        excludeId: entry.id,
+      );
+
       if (mounted) setState(() {});
     }
   }
@@ -87,6 +121,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         counterpartyAccountMasked: drift.Value(_accountController.text.trim()),
         transactionId: drift.Value(_tidController.text.trim()),
         provider: drift.Value(_provider),
+        category: drift.Value(_category),
+        note: drift.Value(_noteController.text.trim()),
         needsReview: const drift.Value(false),
       ),
     );
@@ -99,7 +135,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Discard Slip?'),
-        content: const Text('This will delete this screenshot from your vault.'),
+        content: const Text('This will permanently delete this non-receipt screenshot and remove it from your vault.'),
         actions: [
           TextButton(onPressed: () => ctx.pop(false), child: const Text('Cancel')),
           TextButton(
@@ -117,19 +153,12 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _amountController.dispose();
-    _counterpartyController.dispose();
-    _accountController.dispose();
-    _tidController.dispose();
-    super.dispose();
-  }
-
   String _getCurrencySymbol(String curr) {
     switch (curr.toUpperCase()) {
       case 'USD':
-        return r'$ ';
+      case 'CAD':
+      case 'AUD':
+        return '\$ ';
       case 'EUR':
         return '€ ';
       case 'GBP':
@@ -140,10 +169,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         return 'SAR ';
       case 'INR':
         return '₹ ';
-      case 'CAD':
-        return r'C$ ';
-      case 'AUD':
-        return r'A$ ';
       default:
         return 'Rs ';
     }
@@ -155,10 +180,10 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     if (_entry == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
+    final categoryItem = SlipCategories.get(_category);
 
     return Scaffold(
       appBar: AppBar(
@@ -167,11 +192,10 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           IconButton(
             icon: const Icon(Icons.delete_outline, color: AppColors.error),
             onPressed: _deleteEntry,
-            tooltip: 'Discard',
           ),
           TextButton(
             onPressed: _saveEntry,
-            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           ),
         ],
       ),
@@ -179,27 +203,70 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Image Preview Container
+            // Slip Image Preview
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                height: 200,
+                height: 220,
                 color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerHighLight,
                 child: InteractiveViewer(
                   maxScale: 4.0,
                   child: Image.file(
                     File(_entry!.imagePath),
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => const Center(
-                      child: Icon(Icons.broken_image, size: 48),
-                    ),
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Center(child: Icon(Icons.broken_image, size: 48)),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 16),
 
-            // Non-Receipt Warning Banner if photo is not a receipt
+            // Duplicate Alert Banner
+            if (_duplicateMatch != null) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF451A03) : const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFEF4444), width: 1.5),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.shield_outlined, color: Color(0xFFDC2626), size: 24),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'DUPLICATE SLIP DETECTED',
+                            style: TextStyle(
+                              color: Color(0xFFDC2626),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _duplicateMatch!.reason,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Non-Receipt Warning Banner
             if (!_isReceipt) ...[
               Container(
                 padding: const EdgeInsets.all(14),
@@ -207,24 +274,21 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                   color: isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isDark ? const Color(0xFFD97706) : const Color(0xFFF59E0B),
+                    color: isDark ? const Color(0xFFB45309) : const Color(0xFFF59E0B),
+                    width: 1.5,
                   ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       children: [
-                        Icon(
-                          Icons.warning_amber_rounded,
-                          color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
+                        Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 22),
+                        SizedBox(width: 8),
                         Text(
                           'Non-Payment Screenshot Detected',
                           style: TextStyle(
-                            color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                            color: Color(0xFFD97706),
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -259,6 +323,40 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               ),
               const SizedBox(height: 16),
             ],
+
+            // Category Selector
+            Text('CATEGORY', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade400),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _category,
+                  isExpanded: true,
+                  icon: const Icon(Icons.arrow_drop_down),
+                  items: SlipCategories.all.map((cat) {
+                    return DropdownMenuItem<String>(
+                      value: cat.id,
+                      child: Row(
+                        children: [
+                          Icon(cat.icon, color: cat.color, size: 18),
+                          const SizedBox(width: 10),
+                          Text(cat.name, style: const TextStyle(fontSize: 14)),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _category = val);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
 
             // Direction Selector
             Text('PAYMENT DIRECTION', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold)),
@@ -316,7 +414,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             const SizedBox(height: 16),
 
             // Transaction ID
-            _ConfidenceLabel(label: 'TRANSACTION ID (TID)', confidence: _confidences['transactionId'] ?? 0.0),
+            _ConfidenceLabel(label: 'TRANSACTION ID', confidence: _confidences['tid'] ?? 0.0),
             const SizedBox(height: 4),
             TextField(
               controller: _tidController,
@@ -325,18 +423,35 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 prefixIcon: Icon(Icons.tag),
               ),
             ),
+            const SizedBox(height: 16),
+
+            // Slip Memo / Note Field
+            Text('SLIP MEMO & NOTES', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            TextField(
+              controller: _noteController,
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: 'Add an optional note (e.g. Freelance invoice #44, Rent for October)',
+                hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.edit_note),
+              ),
+            ),
             const SizedBox(height: 24),
 
-            // Action Buttons
+            // Save Button
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryContainer,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: _saveEntry,
-              child: const Text('Confirm & Save Entry', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text('Confirm & Save Entry', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -352,30 +467,28 @@ class _ConfidenceLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isHigh = confidence >= 0.80;
+    Color color;
+    String text;
+    if (confidence >= 0.8) {
+      color = AppColors.tertiary;
+      text = '${(confidence * 100).toInt()}% confidence';
+    } else if (confidence >= 0.5) {
+      color = const Color(0xFFF59E0B);
+      text = '${(confidence * 100).toInt()}% confidence';
+    } else {
+      color = AppColors.error;
+      text = '${(confidence * 100).toInt()}% confidence';
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold)),
         Row(
           children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: isHigh ? AppColors.tertiary : AppColors.secondary,
-                shape: BoxShape.circle,
-              ),
-            ),
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
             const SizedBox(width: 4),
-            Text(
-              '${(confidence * 100).toInt()}% confidence',
-              style: TextStyle(
-                fontSize: 11,
-                color: isHigh ? AppColors.tertiary : AppColors.secondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            Text(text, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
           ],
         ),
       ],
