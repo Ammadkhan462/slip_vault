@@ -5,8 +5,12 @@ import 'package:path_provider/path_provider.dart';
 class OnboardingService {
   static const _fileName = 'onboarding_completed.flag';
 
+  /// Optional override for automated widget testing
+  static bool? testOverride;
+
   /// Check if the user has completed or skipped the onboarding tour
   static Future<bool> isCompleted() async {
+    if (testOverride != null) return testOverride!;
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File(p.join(dir.path, _fileName));

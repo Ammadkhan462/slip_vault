@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
@@ -43,12 +44,21 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
+  Timer? _backfillTimer;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _backfillUnparsedEntries();
+    // Defer background backfill by 2 seconds so first frame renders instantly
+    _backfillTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) _backfillUnparsedEntries();
     });
+  }
+
+  @override
+  void dispose() {
+    _backfillTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _backfillUnparsedEntries() async {

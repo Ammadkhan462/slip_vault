@@ -4,18 +4,23 @@ import 'package:slip_vault/features/detail/presentation/screens/detail_screen.da
 import 'package:slip_vault/features/export/presentation/screens/reports_screen.dart';
 import 'package:slip_vault/features/import/presentation/screens/import_screen.dart';
 import 'package:slip_vault/features/import/presentation/screens/review_screen.dart';
+import 'package:slip_vault/features/onboarding/data/onboarding_service.dart';
 import 'package:slip_vault/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'package:slip_vault/features/paywall/presentation/screens/paywall_screen.dart';
 import 'package:slip_vault/features/search/presentation/screens/search_screen.dart';
 import 'package:slip_vault/features/settings/presentation/screens/settings_screen.dart';
 import 'package:slip_vault/features/vault/presentation/screens/vault_screen.dart';
 
-final initialLocationProvider = Provider<String>((ref) => '/');
-
 final routerProvider = Provider<GoRouter>((ref) {
-  final initialLoc = ref.watch(initialLocationProvider);
   return GoRouter(
-    initialLocation: initialLoc,
+    initialLocation: '/',
+    redirect: (context, state) async {
+      if (state.matchedLocation == '/') {
+        final completed = await OnboardingService.isCompleted();
+        if (!completed) return '/onboarding';
+      }
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/',

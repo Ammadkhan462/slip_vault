@@ -8,22 +8,18 @@ import 'package:slip_vault/features/onboarding/data/onboarding_service.dart';
 import 'package:slip_vault/features/settings/presentation/providers/settings_provider.dart';
 import 'package:slip_vault/l10n/app_localizations.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations([
+
+  // Set portrait orientation non-blocking in background
+  SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  final hasSeenOnboarding = await OnboardingService.isCompleted();
 
   runApp(
-    ProviderScope(
-      overrides: [
-        initialLocationProvider.overrideWithValue(
-          hasSeenOnboarding ? '/' : '/onboarding',
-        ),
-      ],
-      child: const SlipVaultApp(),
+    const ProviderScope(
+      child: SlipVaultApp(),
     ),
   );
 }

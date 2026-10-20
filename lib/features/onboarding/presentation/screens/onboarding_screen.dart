@@ -318,7 +318,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                     Transform.rotate(
                       angle: -0.03,
                       child: Container(
-                        width: 270,
+                        width: 300,
                         height: 180,
                         decoration: BoxDecoration(
                           color: isDark ? const Color(0xFF1E293B).withOpacity(0.5) : const Color(0xFFDCE9FF),
@@ -330,7 +330,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                     Transform.rotate(
                       angle: 0.02,
                       child: Container(
-                        width: 280,
+                        width: 310,
                         height: 185,
                         decoration: BoxDecoration(
                           color: isDark ? const Color(0xFF1E293B).withOpacity(0.8) : const Color(0xFFD3E4FE),
@@ -341,8 +341,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
 
                     // Foreground Primary Voucher Card
                     Container(
-                      width: 290,
-                      padding: const EdgeInsets.all(14),
+                      width: 320,
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: voucherBg,
                         borderRadius: BorderRadius.circular(16),
@@ -361,38 +361,45 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 28,
-                                    height: 28,
-                                    decoration: BoxDecoration(
-                                      color: primaryTeal.withOpacity(0.12),
-                                      borderRadius: BorderRadius.circular(8),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        color: primaryTeal.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(Icons.verified, size: 16, color: primaryTeal),
                                     ),
-                                    child: Icon(Icons.verified, size: 16, color: primaryTeal),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Payment Verified',
-                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textPrimary),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Payment Verified',
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textPrimary),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const Text(
+                                            'TXN-89410294',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w600,
+                                              fontFamily: 'monospace',
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const Text(
-                                        'TXN-89410294',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w600,
-                                          fontFamily: 'monospace',
-                                          color: Color(0xFF64748B),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                    ),
+                                  ],
+                                ),
                               ),
+                              const SizedBox(width: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
@@ -410,7 +417,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
 
                           // Transferred Box
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
                               color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(10),
@@ -418,11 +425,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('Transferred', style: TextStyle(fontSize: 11, color: textSecondary)),
+                                Flexible(child: Text('Transferred', style: TextStyle(fontSize: 11, color: textSecondary))),
+                                const SizedBox(width: 8),
                                 Text(
                                   'Rs 14,850',
                                   style: TextStyle(
-                                    fontSize: 20,
+                                    fontSize: 16,
                                     fontWeight: FontWeight.w800,
                                     color: primaryTeal,
                                     letterSpacing: -0.5,
@@ -437,16 +445,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('From', style: TextStyle(fontSize: 11, color: textSecondary)),
-                              Text('SadaPay Personal', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textPrimary)),
+                              Flexible(child: Text('From', style: TextStyle(fontSize: 11, color: textSecondary))),
+                              const SizedBox(width: 8),
+                              Flexible(child: Text('SadaPay Personal', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textPrimary))),
                             ],
                           ),
                           const SizedBox(height: 4),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('To (Raast ID)', style: TextStyle(fontSize: 11, color: textSecondary)),
-                              const Text('0300 •••• 921', style: TextStyle(fontSize: 11, fontFamily: 'monospace', fontWeight: FontWeight.w600)),
+                              Flexible(child: Text('To (Raast ID)', style: TextStyle(fontSize: 11, color: textSecondary))),
+                              const SizedBox(width: 8),
+                              const Flexible(child: Text('0300 •••• 921', style: TextStyle(fontSize: 11, fontFamily: 'monospace', fontWeight: FontWeight.w600))),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -455,25 +465,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF9CF2E8).withOpacity(isDark ? 0.2 : 0.6),
-                                  borderRadius: BorderRadius.circular(9999),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.check_circle, size: 12, color: primaryTeal),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Auto-Detected: SadaPay',
-                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFF80D5CB) : primaryTeal),
-                                    ),
-                                  ],
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF9CF2E8).withOpacity(isDark ? 0.2 : 0.6),
+                                    borderRadius: BorderRadius.circular(9999),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.check_circle, size: 12, color: primaryTeal),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          'Auto-Detected: SadaPay',
+                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFF80D5CB) : primaryTeal),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
+                              const SizedBox(width: 6),
                               Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Container(width: 6, height: 6, decoration: BoxDecoration(color: emeraldGreen, shape: BoxShape.circle)),
                                   const SizedBox(width: 4),
