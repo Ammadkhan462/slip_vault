@@ -3,6 +3,8 @@ import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:slip_vault/core/database/app_database.dart';
 import 'package:slip_vault/core/database/tables.dart';
@@ -94,6 +96,40 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     } catch (_) {}
   }
 
+  Future<void> _pickAndSyncFromGallery() async {
+    setState(() => _isSyncingGallery = true);
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickMultiImage();
+      if (picked.isEmpty) return;
+
+      final files = picked.map((x) => File(x.path)).toList();
+      final syncService = ref.read(gallerySyncServiceProvider);
+      final result = await syncService.importFiles(files);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.importedCount > 0
+                ? '✅ Synced ${result.importedCount} new payment slips (${result.skippedDuplicates} duplicates, ${result.skippedNonReceipts} non-receipts skipped)'
+                : '0 payment slips detected in selected images.',
+          ),
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sync error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSyncingGallery = false);
+    }
+  }
+
   Future<void> _syncGalleryScreenshots() async {
     setState(() => _isSyncingGallery = true);
     try {
@@ -101,22 +137,52 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
       final result = await syncService.syncScreenshots();
       if (!mounted) return;
 
-      String message;
-      if (result.importedCount > 0) {
-        message = '✅ Synced ${result.importedCount} new payment slips (${result.skippedDuplicates} duplicates, ${result.skippedNonReceipts} non-receipts skipped)';
-      } else if (result.scannedCount == 0) {
-        message = 'No screenshots found in device gallery.';
-      } else {
-        message = 'Up to date: 0 new payment slips found in recent screenshots.';
+      if (result.permissionDenied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Storage permission needed to scan screenshots.'),
+            action: SnackBarAction(
+              label: 'Settings',
+              onPressed: () => openAppSettings(),
+            ),
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (result.importedCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Synced ${result.importedCount} new payment slips (${result.skippedDuplicates} duplicates, ${result.skippedNonReceipts} non-receipts skipped)'),
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else if (result.scannedCount == 0) {
+        // Fallback option in case Android Scoped Storage blocked folder access
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('No screenshots found in device gallery folders.'),
+            action: SnackBarAction(
+              label: 'Select Images',
+              textColor: const Color(0xFF6366F1),
+              onPressed: () => _pickAndSyncFromGallery(),
+            ),
+            duration: const Duration(seconds: 6),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Up to date: ${result.scannedCount} recent images scanned, no new payment slips.'),
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
