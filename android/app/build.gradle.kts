@@ -15,7 +15,7 @@ if (hasKeyProperties) {
 }
 
 android {
-    namespace = "com.slipvault.app.slip_vault"
+    namespace = "com.slipvault.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

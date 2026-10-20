@@ -1,4 +1,4 @@
-package com.slipvault.app.slip_vault
+package com.slipvault.app
 
 import io.flutter.embedding.android.FlutterActivity
 
