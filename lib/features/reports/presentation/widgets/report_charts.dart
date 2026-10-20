@@ -301,6 +301,7 @@ class CategoryBreakdownWidget extends StatelessWidget {
               children: sorted.map((item) {
                 final cat = SlipCategories.get(item.key);
                 final amt = (item.value / 100).toStringAsFixed(0);
+                final pct = grandTotal > 0 ? ' (${(item.value * 100 / grandTotal).toStringAsFixed(0)}%)' : '';
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
@@ -319,7 +320,7 @@ class CategoryBreakdownWidget extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'PKR $amt',
+                        'PKR $amt$pct',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,

@@ -183,8 +183,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final categoryItem = SlipCategories.get(_category);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Review Slip'),

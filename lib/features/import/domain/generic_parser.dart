@@ -59,7 +59,6 @@ class GenericParser implements SlipParser {
   @override
   ParsedSlip parse(String rawText) {
     final confidences = <String, double>{};
-    final lower = rawText.toLowerCase();
 
     // 1. Detect Provider (Local & Global)
     final provider = ProviderDetector.detect(rawText);

@@ -15,7 +15,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final isPro = ref.watch(proStatusProvider);
     final isAppLock = ref.watch(appLockProvider);
     final currentLocale = ref.watch(localeProvider);

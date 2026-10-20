@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:slip_vault/features/import/domain/generic_parser.dart';
-import 'package:slip_vault/features/import/domain/provider_detector.dart';
 
 void main() {
   final parser = GenericParser();
