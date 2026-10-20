@@ -7,6 +7,7 @@ import 'package:slip_vault/core/database/app_database.dart';
 import 'package:slip_vault/core/database/tables.dart';
 import 'package:slip_vault/core/providers/database_provider.dart';
 import 'package:slip_vault/core/theme/app_theme.dart';
+import 'package:slip_vault/core/widgets/vault_bottom_bar.dart';
 import 'package:slip_vault/features/import/domain/generic_parser.dart';
 import 'package:slip_vault/l10n/app_localizations.dart';
 
@@ -242,13 +243,17 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                   // Calculate live totals for the selected month
                   int received = 0;
                   int sent = 0;
+                  int receivedCount = 0;
+                  int sentCount = 0;
                   for (final e in allEntries) {
                     final date = e.occurredAt ?? e.createdAt;
                     if (date.year == _selectedYear && date.month == _selectedMonth && e.amountMinor != null) {
                       if (e.direction == Direction.received) {
                         received += e.amountMinor!;
+                        receivedCount++;
                       } else if (e.direction == Direction.sent) {
                         sent += e.amountMinor!;
+                        sentCount++;
                       }
                     }
                   }
@@ -267,106 +272,227 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
                   return Column(
                     children: [
-                      // Cash Flow Hero Card
+                      // Modern Deep Teal Gradient Hero Card
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      l10n?.netCashFlow ?? 'Net Cash Flow',
-                                      style: theme.textTheme.labelMedium?.copyWith(
-                                        color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(Icons.account_balance_wallet, size: 18, color: AppColors.primaryContainer),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${net >= 0 ? '+' : ''}PKR ${(net / 100).toStringAsFixed(0)}',
-                                  style: theme.textTheme.headlineMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: net >= 0 ? AppColors.tertiary : AppColors.error,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              l10n?.totalReceived ?? 'Total Received',
-                                              style: theme.textTheme.labelSmall?.copyWith(
-                                                color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'PKR ${(received / 100).toStringAsFixed(0)}',
-                                              style: theme.textTheme.titleMedium?.copyWith(
-                                                color: AppColors.tertiary,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              l10n?.totalSent ?? 'Total Sent',
-                                              style: theme.textTheme.labelSmall?.copyWith(
-                                                color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'PKR ${(sent / 100).toStringAsFixed(0)}',
-                                              style: theme.textTheme.titleMedium?.copyWith(
-                                                color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF0F766E), Color(0xFF064E3B)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF0F766E).withOpacity(0.25),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(18),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        l10n?.netCashFlow ?? 'Net Cash Flow',
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.9),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.22),
+                                          borderRadius: BorderRadius.circular(9999),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 5,
+                                              height: 5,
+                                              decoration: const BoxDecoration(
+                                                color: Color(0xFF34D399),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            const Text(
+                                              'All on-device',
+                                              style: TextStyle(
+                                                color: Color(0xFFD1FAE5),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.12),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.account_balance_wallet_outlined,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${net >= 0 ? '+' : '-'}PKR ${(net.abs() / 100).toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.22),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                l10n?.totalReceived ?? 'Total Received',
+                                                style: TextStyle(
+                                                  color: Colors.white.withOpacity(0.8),
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF10B981).withOpacity(0.3),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  '+$receivedCount',
+                                                  style: const TextStyle(
+                                                    color: Color(0xFF6EE7B7),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'PKR ${(received / 100).toStringAsFixed(0)}',
+                                            style: const TextStyle(
+                                              color: Color(0xFF6EE7B7),
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(2),
+                                            child: LinearProgressIndicator(
+                                              value: (received + sent) > 0 ? (received / (received + sent)) : 0.0,
+                                              backgroundColor: Colors.white.withOpacity(0.12),
+                                              valueColor: const AlwaysStoppedAnimation(Color(0xFF10B981)),
+                                              minHeight: 3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.22),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                l10n?.totalSent ?? 'Total Sent',
+                                                style: TextStyle(
+                                                  color: Colors.white.withOpacity(0.8),
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withOpacity(0.15),
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  '-$sentCount',
+                                                  style: TextStyle(
+                                                    color: Colors.white.withOpacity(0.9),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'PKR ${(sent / 100).toStringAsFixed(0)}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(2),
+                                            child: LinearProgressIndicator(
+                                              value: (received + sent) > 0 ? (sent / (received + sent)) : 0.0,
+                                              backgroundColor: Colors.white.withOpacity(0.12),
+                                              valueColor: const AlwaysStoppedAnimation(Color(0xFF94A3B8)),
+                                              minHeight: 3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -384,13 +510,13 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                             ),
                             const SizedBox(width: 8),
                             _FilterChipItem(
-                              label: l10n?.received ?? 'Received',
+                              label: '${l10n?.received ?? 'Received'} $receivedCount',
                               isSelected: _activeFilter == VaultFilter.received,
                               onTap: () => setState(() => _activeFilter = VaultFilter.received),
                             ),
                             const SizedBox(width: 8),
                             _FilterChipItem(
-                              label: l10n?.sent ?? 'Sent',
+                              label: '${l10n?.sent ?? 'Sent'} $sentCount',
                               isSelected: _activeFilter == VaultFilter.sent,
                               onTap: () => setState(() => _activeFilter = VaultFilter.sent),
                             ),
@@ -414,7 +540,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                       Expanded(
                         child: filtered.isEmpty
                             ? Center(
-                                child: Padding(
+                                child: SingleChildScrollView(
                                   padding: const EdgeInsets.symmetric(horizontal: 32),
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -451,119 +577,276 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                                 ),
                               )
                             : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    itemCount: filtered.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final item = filtered[index];
-                      final isReceived = item.direction == Direction.received;
-                      final amt = item.amountMinor != null ? (item.amountMinor! / 100).toStringAsFixed(0) : '0';
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                itemCount: filtered.length,
+                                separatorBuilder: (context, index) => const SizedBox(height: 10),
+                                itemBuilder: (context, index) {
+                                  final item = filtered[index];
+                                  final isReceived = item.direction == Direction.received;
+                                  final amt = item.amountMinor != null ? (item.amountMinor! / 100).toStringAsFixed(0) : '0';
+                                  final occurred = item.occurredAt ?? item.createdAt;
+                                  final timeStr = '${occurred.hour.toString().padLeft(2, '0')}:${occurred.minute.toString().padLeft(2, '0')}';
 
-                      return InkWell(
-                        onTap: () => context.push('/detail/${item.id}'),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Card(
-                          margin: EdgeInsets.zero,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: SizedBox(
-                                    width: 50,
-                                    height: 50,
-                                    child: Image.file(
-                                      File(item.imagePath),
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => Container(
-                                        color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerHighLight,
-                                        child: const Icon(Icons.receipt),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              item.counterpartyName ?? item.provider ?? 'Payment Slip',
-                                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                            ),
-                                          ),
-                                          if (item.needsReview) ...[
-                                            const SizedBox(width: 6),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.secondaryContainer,
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                              child: const Text('Review', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        item.transactionId != null ? 'TID: ${item.transactionId}' : 'Screenshot OCR',
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
+                                  return InkWell(
+                                    onTap: () => context.push('/detail/${item.id}'),
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: Card(
+                                      margin: EdgeInsets.zero,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                        side: BorderSide(
+                                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                                          width: 1.0,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '${isReceived ? '+' : '-'}PKR $amt',
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: isReceived
-                                            ? AppColors.tertiary
-                                            : (isDark ? Colors.white : AppColors.onSurfaceLight),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              children: [
+                                                _buildBrandAvatar(item.provider, item.imagePath, isDark),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Expanded(
+                                                            child: Text(
+                                                              item.counterpartyName ?? item.provider ?? 'Payment Slip',
+                                                              style: theme.textTheme.titleSmall?.copyWith(
+                                                                fontWeight: FontWeight.bold,
+                                                                fontSize: 14,
+                                                              ),
+                                                              overflow: TextOverflow.ellipsis,
+                                                              maxLines: 1,
+                                                            ),
+                                                          ),
+                                                          if (!item.needsReview) ...[
+                                                            const SizedBox(width: 4),
+                                                            const Icon(Icons.check_circle, size: 14, color: Color(0xFF0F766E)),
+                                                          ],
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Row(
+                                                        children: [
+                                                          if (item.provider != null) ...[
+                                                            Container(
+                                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                              decoration: BoxDecoration(
+                                                                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+                                                                borderRadius: BorderRadius.circular(4),
+                                                              ),
+                                                              child: Text(
+                                                                item.provider!,
+                                                                style: TextStyle(
+                                                                  fontSize: 10,
+                                                                  fontWeight: FontWeight.w600,
+                                                                  color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(width: 6),
+                                                          ],
+                                                          if (item.counterpartyAccountMasked != null)
+                                                            Expanded(
+                                                              child: Text(
+                                                                item.counterpartyAccountMasked!,
+                                                                style: theme.textTheme.bodySmall?.copyWith(
+                                                                  color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
+                                                                  fontSize: 11,
+                                                                  fontFamily: 'monospace',
+                                                                ),
+                                                                overflow: TextOverflow.ellipsis,
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                                  children: [
+                                                    Text(
+                                                      '${isReceived ? '+' : '-'}PKR $amt',
+                                                      style: TextStyle(
+                                                        fontSize: 15,
+                                                        fontWeight: FontWeight.w800,
+                                                        color: isReceived
+                                                            ? const Color(0xFF10B981)
+                                                            : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      timeStr,
+                                                      style: theme.textTheme.labelSmall?.copyWith(
+                                                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Container(
+                                              padding: const EdgeInsets.only(top: 8),
+                                              decoration: BoxDecoration(
+                                                border: Border(
+                                                  top: BorderSide(
+                                                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Icon(Icons.tag, size: 12, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                                                      const SizedBox(width: 3),
+                                                      Text(
+                                                        item.transactionId != null ? 'TID-${item.transactionId}' : 'Screenshot OCR',
+                                                        style: TextStyle(
+                                                          fontFamily: 'monospace',
+                                                          fontSize: 11,
+                                                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  Row(
+                                                    children: [
+                                                      Container(
+                                                        width: 5,
+                                                        height: 5,
+                                                        decoration: BoxDecoration(
+                                                          color: item.needsReview ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                                                          shape: BoxShape.circle,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        item.needsReview ? 'Needs Review' : 'Auto-verified',
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: item.needsReview
+                                                              ? const Color(0xFFF59E0B)
+                                                              : (isDark ? const Color(0xFF34D399) : const Color(0xFF059669)),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      item.provider ?? '',
-                                      style: theme.textTheme.labelSmall?.copyWith(color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
-    ],
-  ),
-),
-  floatingActionButton: FloatingActionButton.extended(
+      bottomNavigationBar: const VaultBottomBar(currentIndex: 0),
+      floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primaryContainer,
         foregroundColor: Colors.white,
         onPressed: () => context.push('/import'),
         icon: const Icon(Icons.add_photo_alternate_outlined),
-        label: Text(l10n?.importScreenshots ?? 'Import'),
+        label: Text(l10n?.importScreenshots ?? 'Import Slip'),
       ),
+    );
+  }
+
+  Widget _buildBrandAvatar(String? provider, String imagePath, bool isDark) {
+    final prov = provider?.toLowerCase() ?? '';
+    Color bgColor = const Color(0xFF0F766E);
+    String initials = 'SLIP';
+
+    if (prov.contains('jazz')) {
+      bgColor = const Color(0xFFE11D48);
+      initials = 'JC';
+    } else if (prov.contains('easy')) {
+      bgColor = const Color(0xFF059669);
+      initials = 'EP';
+    } else if (prov.contains('sada')) {
+      bgColor = const Color(0xFF0D9488);
+      initials = 'SP';
+    } else if (prov.contains('faysal')) {
+      bgColor = const Color(0xFF1E3A8A);
+      initials = 'FB';
+    } else if (prov.contains('raast')) {
+      bgColor = const Color(0xFFD97706);
+      initials = 'RAAST';
+    } else if (prov.contains('meezan')) {
+      bgColor = const Color(0xFF4338CA);
+      initials = 'MB';
+    } else if (prov.contains('hbl')) {
+      bgColor = const Color(0xFF047857);
+      initials = 'HBL';
+    } else if (prov.contains('naya')) {
+      bgColor = const Color(0xFFEA580C);
+      initials = 'NP';
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            initials,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: -2,
+          right: -2,
+          child: Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                width: 2,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
