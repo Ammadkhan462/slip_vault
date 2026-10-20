@@ -2,9 +2,11 @@ import 'dart:io';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:slip_vault/core/database/app_database.dart';
+import 'package:slip_vault/core/database/tables.dart';
 import 'package:slip_vault/core/providers/database_provider.dart';
 import 'package:slip_vault/features/import/data/image_storage_service.dart';
 import 'package:slip_vault/features/import/data/ocr_service.dart';
+import 'package:slip_vault/features/import/domain/generic_parser.dart';
 
 class ImportItemStatus {
   final String filename;
@@ -143,12 +145,26 @@ class BatchImportNotifier extends Notifier<BatchImportState> {
 
           final savedFile = await ImageStorageService.saveAndDownscaleImage(file);
           final recognizedText = await _ocrService!.recognizeText(savedFile);
+          final parsed = GenericParser().parse(recognizedText);
+
+          Direction dir = Direction.unknown;
+          if (parsed.direction == 'received') dir = Direction.received;
+          if (parsed.direction == 'sent') dir = Direction.sent;
 
           await db.into(db.entries).insert(
                 EntriesCompanion.insert(
                   imagePath: savedFile.path,
                   imageHash: hash,
+                  amountMinor: drift.Value(parsed.amountMinor),
+                  currency: drift.Value(parsed.currency),
+                  direction: drift.Value(dir),
+                  counterpartyName: drift.Value(parsed.counterpartyName),
+                  counterpartyAccountMasked: drift.Value(parsed.counterpartyAccountMasked),
+                  transactionId: drift.Value(parsed.transactionId),
+                  provider: drift.Value(parsed.provider),
+                  occurredAt: drift.Value(parsed.occurredAt ?? DateTime.now()),
                   ocrText: drift.Value(recognizedText),
+                  needsReview: drift.Value(parsed.needsReview),
                 ),
               );
 

@@ -85,6 +85,31 @@ void main() {
       expect(result.needsReview, isFalse);
     });
 
+    test('Parses SadaPay Raast P2P sent payment fixture from user screenshot', () {
+      const fixture = '''
+      SADAPAY
+      Rs. 400
+      Ammad Ul Hassan Khan to IRFAN NAEEM
+      Powered by Raast
+      Date & Time (PKT)
+      03 October 2026, 11:42 PM
+      Receiver's Account
+      Mobilink Microfinance Bank (MMBL) *1274
+      Reference Number
+      Raast-600453
+      ''';
+
+      final result = parser.parse(fixture);
+      expect(result.provider, equals('SadaPay'));
+      expect(result.amountMinor, equals(40000));
+      expect(result.direction, equals('sent'));
+      expect(result.counterpartyName, equals('IRFAN NAEEM'));
+      expect(result.counterpartyAccountMasked, contains('*1274'));
+      expect(result.transactionId, equals('Raast-600453'));
+      expect(result.occurredAt, equals(DateTime(2026, 10, 3)));
+      expect(result.needsReview, isFalse);
+    });
+
     test('Parses Raast P2P transaction with IBAN fixture', () {
       const fixture = '''
       State Bank of Pakistan - Raast

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import 'package:slip_vault/core/database/app_database.dart';
 import 'package:slip_vault/core/database/tables.dart';
 import 'package:slip_vault/core/providers/database_provider.dart';
 import 'package:slip_vault/core/theme/app_theme.dart';
+import 'package:slip_vault/features/import/domain/generic_parser.dart';
 
 class DetailScreen extends ConsumerStatefulWidget {
   final int entryId;
@@ -33,7 +35,30 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
 
   Future<void> _loadEntry() async {
     final db = ref.read(databaseProvider);
-    final entry = await (db.select(db.entries)..where((tbl) => tbl.id.equals(widget.entryId))).getSingleOrNull();
+    var entry = await (db.select(db.entries)..where((tbl) => tbl.id.equals(widget.entryId))).getSingleOrNull();
+
+    if (entry != null && entry.amountMinor == null && entry.ocrText.isNotEmpty) {
+      final parsed = GenericParser().parse(entry.ocrText);
+      Direction dir = Direction.unknown;
+      if (parsed.direction == 'received') dir = Direction.received;
+      if (parsed.direction == 'sent') dir = Direction.sent;
+
+      await (db.update(db.entries)..where((tbl) => tbl.id.equals(entry!.id))).write(
+        EntriesCompanion(
+          amountMinor: drift.Value(parsed.amountMinor),
+          currency: drift.Value(parsed.currency),
+          direction: drift.Value(dir),
+          counterpartyName: drift.Value(parsed.counterpartyName),
+          counterpartyAccountMasked: drift.Value(parsed.counterpartyAccountMasked),
+          transactionId: drift.Value(parsed.transactionId),
+          provider: drift.Value(parsed.provider),
+          occurredAt: drift.Value(parsed.occurredAt ?? entry.createdAt),
+          needsReview: drift.Value(parsed.needsReview),
+        ),
+      );
+      entry = await (db.select(db.entries)..where((tbl) => tbl.id.equals(widget.entryId))).getSingleOrNull();
+    }
+
     if (mounted) setState(() => _entry = entry);
   }
 

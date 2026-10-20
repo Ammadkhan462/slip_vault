@@ -14,16 +14,21 @@ class ProviderDetector {
     'Allied Bank': ['allied bank', 'abl', 'myabl'],
   };
 
-  /// Returns detected provider name or null if no definitive keyword is found
+  /// Returns detected provider name based on earliest appearance in receipt
   static String? detect(String text) {
     final lower = text.toLowerCase();
+    String? bestProvider;
+    int earliestIndex = 999999;
+
     for (final entry in _providerKeywords.entries) {
       for (final keyword in entry.value) {
-        if (lower.contains(keyword)) {
-          return entry.key;
+        final idx = lower.indexOf(keyword);
+        if (idx != -1 && idx < earliestIndex) {
+          earliestIndex = idx;
+          bestProvider = entry.key;
         }
       }
     }
-    return null;
+    return bestProvider;
   }
 }

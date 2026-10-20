@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:slip_vault/core/database/app_database.dart';
 import 'package:slip_vault/core/database/tables.dart';
 import 'package:slip_vault/core/providers/database_provider.dart';
 import 'package:slip_vault/core/theme/app_theme.dart';
+import 'package:slip_vault/features/import/domain/generic_parser.dart';
 import 'package:slip_vault/l10n/app_localizations.dart';
 
 enum VaultFilter { all, received, sent, needsReview, other }
@@ -28,6 +30,47 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _backfillUnparsedEntries();
+    });
+  }
+
+  Future<void> _backfillUnparsedEntries() async {
+    try {
+      final db = ref.read(databaseProvider);
+      final unparsed = await (db.select(db.entries)
+            ..where((tbl) => tbl.amountMinor.isNull() & tbl.ocrText.isNotNull()))
+          .get();
+
+      if (unparsed.isEmpty) return;
+      final parser = GenericParser();
+      for (final entry in unparsed) {
+        if (entry.ocrText.trim().isEmpty) continue;
+        final parsed = parser.parse(entry.ocrText);
+        Direction dir = Direction.unknown;
+        if (parsed.direction == 'received') dir = Direction.received;
+        if (parsed.direction == 'sent') dir = Direction.sent;
+
+        await (db.update(db.entries)..where((tbl) => tbl.id.equals(entry.id))).write(
+          EntriesCompanion(
+            amountMinor: drift.Value(parsed.amountMinor),
+            currency: drift.Value(parsed.currency),
+            direction: drift.Value(dir),
+            counterpartyName: drift.Value(parsed.counterpartyName),
+            counterpartyAccountMasked: drift.Value(parsed.counterpartyAccountMasked),
+            transactionId: drift.Value(parsed.transactionId),
+            provider: drift.Value(parsed.provider),
+            occurredAt: drift.Value(parsed.occurredAt ?? entry.createdAt),
+            needsReview: drift.Value(parsed.needsReview),
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
@@ -48,20 +91,25 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
               child: const Icon(Icons.receipt_long, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n?.vaultTitle ?? 'Slip Vault',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  l10n?.vaultSubtitle ?? 'Receipt Vault',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n?.vaultTitle ?? 'Slip Vault',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                  Text(
+                    l10n?.vaultSubtitle ?? 'Receipt Vault',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),

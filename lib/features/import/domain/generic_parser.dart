@@ -22,7 +22,7 @@ class GenericParser implements SlipParser {
     // 3. Extract Direction (received / sent / unknown)
     final direction = _extractDirection(rawText, confidences);
 
-    // 4. Extract Transaction ID (TID / Trx / Ref)
+    // 4. Extract Transaction ID (TID / Trx / Ref / Reference Number)
     final tid = _extractTransactionId(rawText, confidences);
 
     // 5. Extract Counterparty Name & Masked Account
@@ -58,7 +58,7 @@ class GenericParser implements SlipParser {
   }
 
   int? _extractAmount(String text, Map<String, double> conf) {
-    // Matches: "Rs 5,000.00", "PKR 12,500", "Amount: 1,500"
+    // Matches: "Rs 5,000.00", "Rs. 400", "PKR 12,500", "Amount: 1,500"
     final regex = RegExp(
       r'(?:Rs\.?|PKR|Amount[:\s]*)\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)',
       caseSensitive: false,
@@ -80,7 +80,7 @@ class GenericParser implements SlipParser {
       final str = fallbackMatch.group(1)!.replaceAll(',', '');
       final parsed = double.tryParse(str);
       if (parsed != null) {
-        conf['amount'] = 0.70; // Lower confidence
+        conf['amount'] = 0.70;
         return (parsed * 100).round();
       }
     }
@@ -99,9 +99,10 @@ class GenericParser implements SlipParser {
       conf['direction'] = 0.90;
       return 'received';
     }
-    if (lower.contains('sent') ||
+    if (lower.contains(' to ') ||
+        lower.contains('sent') ||
         lower.contains('debited') ||
-        lower.contains('transferred to') ||
+        lower.contains('transferred') ||
         lower.contains('payment successful') ||
         lower.contains('paid to')) {
       conf['direction'] = 0.90;
@@ -112,22 +113,40 @@ class GenericParser implements SlipParser {
   }
 
   String? _extractTransactionId(String text, Map<String, double> conf) {
-    // Matches: "TID: 12345678", "Trx ID: ABC123", "Ref No: 98214309", "Transaction ID 9812"
+    // Matches: "TID: 12345678", "Reference Number Raast-600453", "Trx ID: ABC123", "Ref No: 98214309"
     final regex = RegExp(
-      r'(?:TID|Trx\s*ID|Ref(?:erence)?\s*(?:No|ID)?|Transaction\s*ID)[:\s#]*([A-Z0-9_-]{6,25})',
+      r'(?:TID|Trx\s*ID|Ref(?:erence)?(?:\s*(?:Number|No|ID))?|Transaction\s*ID)[:\s#\n]*([A-Z0-9_-]{5,30})',
       caseSensitive: false,
     );
     final match = regex.firstMatch(text);
     if (match != null) {
-      conf['transactionId'] = 0.90;
-      return match.group(1)!.trim();
+      final tid = match.group(1)!.trim();
+      // Ensure we didn't capture the word "number"
+      if (tid.toLowerCase() != 'number') {
+        conf['transactionId'] = 0.90;
+        return tid;
+      }
     }
     conf['transactionId'] = 0.0;
     return null;
   }
 
   String? _extractCounterparty(String text, Map<String, double> conf) {
-    // Matches: "To: John Doe", "From: Kashif Electronics", "Sent to: Ali", "Paid to: K-Electric Ltd"
+    // 1. Matches: "Sender to Receiver" e.g. "Ammad Ul Hassan Khan to IRFAN NAEEM"
+    final toPattern = RegExp(
+      r'[A-Za-z\s]+ to ([A-Za-z0-9\s&.-]{3,35})',
+      caseSensitive: false,
+    );
+    final toMatch = toPattern.firstMatch(text);
+    if (toMatch != null) {
+      final name = toMatch.group(1)!.trim().split('\n').first;
+      if (name.length > 2 && !name.toLowerCase().contains('account')) {
+        conf['counterparty'] = 0.85;
+        return name;
+      }
+    }
+
+    // 2. Matches: "To: John Doe", "From: Kashif Electronics", "Sent to: Ali", "Paid to: K-Electric Ltd"
     final regex = RegExp(
       r'(?:To|From|Sent\s+to|Received\s+from|Paid\s+to)[:\s]+([A-Za-z0-9\s&.-]{3,40})',
       caseSensitive: false,
@@ -145,9 +164,23 @@ class GenericParser implements SlipParser {
   }
 
   String? _extractAccount(String text, Map<String, double> conf) {
-    // Matches: "0345-***9012" or "03001234567" or masked account "PK**...1234"
+    // 1. Label pattern: "Receiver's Account Mobilink Microfinance Bank *1274"
+    final acctLabelRegex = RegExp(
+      r"(?:Account|Receiver's\s*Account|Sender's\s*Account)[:\s]*([^\n]+)",
+      caseSensitive: false,
+    );
+    final acctMatch = acctLabelRegex.firstMatch(text);
+    if (acctMatch != null) {
+      final val = acctMatch.group(1)!.trim();
+      if (val.isNotEmpty && val.length < 50) {
+        conf['account'] = 0.85;
+        return val;
+      }
+    }
+
+    // 2. Mobile or masked account: "0345-***9012" or "03001234567" or "*1234"
     final regex = RegExp(
-      r'\b(03[0-9]{2}[-\s]?[*0-9]{7}|[0-9]{4}[-\s]?[*]{3,}[-\s]?[0-9]{3,4}|PK[0-9]{2}[A-Z]{4}[0-9*]{10,20})\b',
+      r'\b(03[0-9]{2}[-\s]?[*0-9]{7}|[0-9]{4}[-\s]?[*]{3,}[-\s]?[0-9]{3,4}|\*[0-9]{4}|PK[0-9]{2}[A-Z]{4}[0-9*]{10,20})\b',
       caseSensitive: false,
     );
     final match = regex.firstMatch(text);
@@ -159,7 +192,28 @@ class GenericParser implements SlipParser {
   }
 
   DateTime? _extractDate(String text, Map<String, double> conf) {
-    // Common date patterns: "12 Oct 2026", "12-10-2026", "2026-10-12"
+    // 1. Textual month format: "03 October 2026" or "12 Oct 2026"
+    final textualRegex = RegExp(
+      r'\b([0-9]{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+([0-9]{4})\b',
+      caseSensitive: false,
+    );
+    final textMatch = textualRegex.firstMatch(text);
+    if (textMatch != null) {
+      final day = int.tryParse(textMatch.group(1)!);
+      final monthStr = textMatch.group(2)!.toLowerCase();
+      final year = int.tryParse(textMatch.group(3)!);
+      const months = {
+        'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+        'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+      };
+      final m = months[monthStr.substring(0, 3)];
+      if (day != null && year != null && m != null) {
+        conf['date'] = 0.90;
+        return DateTime(year, m, day);
+      }
+    }
+
+    // 2. Numeric formats: "12-10-2026", "2026-10-12"
     final regex = RegExp(
       r'\b([0-9]{1,2}[-\/][0-9]{1,2}[-\/][0-9]{2,4}|[0-9]{4}[-\/][0-9]{1,2}[-\/][0-9]{1,2})\b',
     );
