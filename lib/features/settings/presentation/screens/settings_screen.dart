@@ -8,6 +8,7 @@ import 'package:slip_vault/core/widgets/vault_bottom_bar.dart';
 import 'package:slip_vault/features/settings/data/auth_service.dart';
 import 'package:slip_vault/features/settings/data/backup_service.dart';
 import 'package:slip_vault/features/settings/presentation/providers/settings_provider.dart';
+import 'package:slip_vault/features/tour/data/vault_tour_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -398,6 +399,19 @@ class SettingsScreen extends ConsumerWidget {
                     subtitle: const Text('Review feature walkthrough & slip detection guides', style: TextStyle(fontSize: 12)),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                     onTap: () => context.push('/onboarding'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.tips_and_updates_outlined, size: 22, color: AppColors.primaryContainer),
+                    title: const Text('Interactive Vault Guidance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    subtitle: const Text('Replay interactive bubble guidance for Auto-Sync & Cash Flow', style: TextStyle(fontSize: 12)),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                    onTap: () async {
+                      await VaultTourService.reset();
+                      if (context.mounted) {
+                        context.go('/');
+                      }
+                    },
                   ),
                   const Divider(height: 1),
                   ListTile(

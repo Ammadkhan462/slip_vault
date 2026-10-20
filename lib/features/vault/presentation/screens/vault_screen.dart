@@ -16,6 +16,8 @@ import 'package:slip_vault/features/categories/domain/category_model.dart';
 import 'package:slip_vault/features/export/data/report_export_service.dart';
 import 'package:slip_vault/features/import/domain/gallery_sync_service.dart';
 import 'package:slip_vault/features/import/domain/generic_parser.dart';
+import 'package:slip_vault/features/tour/data/vault_tour_service.dart';
+import 'package:slip_vault/features/tour/presentation/widgets/vault_coach_mark.dart';
 import 'package:slip_vault/l10n/app_localizations.dart';
 
 enum VaultFilter { all, received, sent, needsReview, other }
@@ -44,7 +46,13 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
+  // GlobalKeys for Interactive Bubble Guidance
+  final GlobalKey _autoSyncKey = GlobalKey();
+  final GlobalKey _heroCardKey = GlobalKey();
+  final GlobalKey _filterBarKey = GlobalKey();
+
   Timer? _backfillTimer;
+  Timer? _tourTimer;
 
   @override
   void initState() {
@@ -53,12 +61,61 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     _backfillTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) _backfillUnparsedEntries();
     });
+
+    // Check if first-time user needs interactive bubble guidance
+    _tourTimer = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) _checkFirstTimeVaultTour();
+    });
   }
 
   @override
   void dispose() {
     _backfillTimer?.cancel();
+    _tourTimer?.cancel();
+    VaultCoachMark.dismiss();
     super.dispose();
+  }
+
+  Future<void> _checkFirstTimeVaultTour() async {
+    final completed = await VaultTourService.isCompleted();
+    if (!completed && mounted) {
+      _showVaultTour();
+    }
+  }
+
+  void _showVaultTour() {
+    VaultCoachMark.show(
+      context: context,
+      targets: [
+        TourTarget(
+          key: _autoSyncKey,
+          title: '1-Tap Auto-Sync Scanner',
+          description:
+              'Tap here to automatically scan your device Screenshots and WhatsApp folders. Slip Vault imports new slips in seconds while skipping non-receipts.',
+          icon: Icons.sync,
+          radius: 9999,
+          targetPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        ),
+        TourTarget(
+          key: _heroCardKey,
+          title: 'Net Cash Flow & Currencies',
+          description:
+              'Monitor total income, expenses, and cash flow. Switch between currency pills (PKR, USD, EUR, AED) to view segregated totals accurately.',
+          icon: Icons.account_balance_wallet_outlined,
+          radius: 20,
+          targetPadding: const EdgeInsets.all(4),
+        ),
+        TourTarget(
+          key: _filterBarKey,
+          title: 'Smart Filters & Categories',
+          description:
+              'Easily filter slips by Received, Sent, or Needs Review. You can also assign and filter by custom tags like Utilities, Salary, or Freelance.',
+          icon: Icons.tune,
+          radius: 12,
+          targetPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        ),
+      ],
+    );
   }
 
   Future<void> _backfillUnparsedEntries() async {
@@ -528,6 +585,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
                         // 1-Tap Auto-Sync Screenshots Button
                         InkWell(
+                          key: _autoSyncKey,
                           onTap: _isSyncingGallery ? null : _syncGalleryScreenshots,
                           borderRadius: BorderRadius.circular(9999),
                           child: Container(
@@ -573,6 +631,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: Container(
+                      key: _heroCardKey,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [Color(0xFF0F766E), Color(0xFF064E3B)],
@@ -783,6 +842,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                 // Filter Chips (Type & Categories)
                 SliverToBoxAdapter(
                   child: SingleChildScrollView(
+                    key: _filterBarKey,
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     child: Row(
