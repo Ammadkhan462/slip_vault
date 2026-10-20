@@ -85,80 +85,34 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/images/app_icon.png',
+                width: 32,
+                height: 32,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.receipt_long, color: Colors.white, size: 20),
+                ),
               ),
-              child: const Icon(Icons.receipt_long, color: Colors.white, size: 20),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    l10n?.vaultTitle ?? 'Slip Vault',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    l10n?.vaultSubtitle ?? 'Receipt Vault',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+            const SizedBox(width: 12),
+            Text(
+              l10n?.vaultTitle ?? 'Slip Vault',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
               ),
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => context.push('/search'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.assessment_outlined),
-            onPressed: () => context.push('/reports'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.push('/settings'),
-          ),
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerHighLight,
-              borderRadius: BorderRadius.circular(9999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: AppColors.tertiaryContainer,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  l10n?.offlineVault ?? 'Offline',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: AppColors.tertiary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
       body: SafeArea(
         child: Column(
@@ -584,11 +538,18 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                                   final item = filtered[index];
                                   final isReceived = item.direction == Direction.received;
                                   final amt = item.amountMinor != null ? (item.amountMinor! / 100).toStringAsFixed(0) : '0';
+                                  final curr = item.currency.isNotEmpty ? item.currency : 'PKR';
                                   final occurred = item.occurredAt ?? item.createdAt;
                                   final timeStr = '${occurred.hour.toString().padLeft(2, '0')}:${occurred.minute.toString().padLeft(2, '0')}';
 
                                   return InkWell(
-                                    onTap: () => context.push('/detail/${item.id}'),
+                                    onTap: () {
+                                      if (item.needsReview) {
+                                        context.push('/review/${item.id}');
+                                      } else {
+                                        context.push('/detail/${item.id}');
+                                      }
+                                    },
                                     borderRadius: BorderRadius.circular(14),
                                     child: Card(
                                       margin: EdgeInsets.zero,
@@ -675,7 +636,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                                                   crossAxisAlignment: CrossAxisAlignment.end,
                                                   children: [
                                                     Text(
-                                                      '${isReceived ? '+' : '-'}PKR $amt',
+                                                      '${isReceived ? '+' : '-'}$curr $amt',
                                                       style: TextStyle(
                                                         fontSize: 15,
                                                         fontWeight: FontWeight.w800,

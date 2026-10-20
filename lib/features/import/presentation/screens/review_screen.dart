@@ -48,18 +48,19 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       _entry = entry;
       // Parse OCR text using GenericParser
       final parsed = GenericParser().parse(entry.ocrText);
-      _direction = parsed.direction;
-      _provider = parsed.provider ?? 'JazzCash';
-      _currency = parsed.currency;
+      _direction = entry.direction != Direction.unknown ? entry.direction.name : parsed.direction;
+      _provider = entry.provider ?? parsed.provider ?? 'JazzCash';
+      _currency = entry.currency.isNotEmpty ? entry.currency : parsed.currency;
       _isReceipt = parsed.isReceipt;
       _confidences = parsed.fieldConfidences;
 
-      if (parsed.amountMinor != null) {
-        _amountController.text = (parsed.amountMinor! / 100).toStringAsFixed(2);
+      final amount = entry.amountMinor ?? parsed.amountMinor;
+      if (amount != null) {
+        _amountController.text = (amount / 100).toStringAsFixed(2);
       }
-      _counterpartyController.text = parsed.counterpartyName ?? '';
-      _accountController.text = parsed.counterpartyAccountMasked ?? '';
-      _tidController.text = parsed.transactionId ?? '';
+      _counterpartyController.text = entry.counterpartyName ?? parsed.counterpartyName ?? '';
+      _accountController.text = entry.counterpartyAccountMasked ?? parsed.counterpartyAccountMasked ?? '';
+      _tidController.text = entry.transactionId ?? parsed.transactionId ?? '';
       if (mounted) setState(() {});
     }
   }

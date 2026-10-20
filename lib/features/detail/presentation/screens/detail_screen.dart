@@ -203,7 +203,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
                       Text('Amount Verified', style: theme.textTheme.labelSmall?.copyWith(color: Colors.grey)),
                       const SizedBox(height: 4),
                       Text(
-                        'PKR $amount',
+                        '${entry.currency.isNotEmpty ? entry.currency : 'PKR'} $amount',
                         style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                           color: isReceived ? AppColors.tertiary : AppColors.onSurfaceLight,
@@ -239,6 +239,47 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
+            if (entry.needsReview) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFFB45309) : const Color(0xFFF59E0B),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: isDark ? const Color(0xFFFCD34D) : const Color(0xFFB45309), size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'This slip needs manual review.',
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF59E0B),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => context.push('/review/${entry.id}').then((_) => _loadEntry()),
+                      child: const Text('Review Now', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // Share Card to WhatsApp Button
             ElevatedButton.icon(
