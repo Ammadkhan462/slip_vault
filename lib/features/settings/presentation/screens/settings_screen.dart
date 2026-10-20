@@ -393,6 +393,14 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   ListTile(
+                    leading: const Icon(Icons.school_outlined, size: 22, color: AppColors.primaryContainer),
+                    title: const Text('App Onboarding Tour', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    subtitle: const Text('Review feature walkthrough & slip detection guides', style: TextStyle(fontSize: 12)),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                    onTap: () => context.push('/onboarding'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
                     leading: const Icon(Icons.privacy_tip_outlined, size: 22),
                     title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     subtitle: const Text('100% offline, zero cloud servers, zero telemetry', style: TextStyle(fontSize: 12)),

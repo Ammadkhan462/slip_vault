@@ -10,9 +10,12 @@ import 'package:slip_vault/features/search/presentation/screens/search_screen.da
 import 'package:slip_vault/features/settings/presentation/screens/settings_screen.dart';
 import 'package:slip_vault/features/vault/presentation/screens/vault_screen.dart';
 
+final initialLocationProvider = Provider<String>((ref) => '/');
+
 final routerProvider = Provider<GoRouter>((ref) {
+  final initialLoc = ref.watch(initialLocationProvider);
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: initialLoc,
     routes: [
       GoRoute(
         path: '/',
