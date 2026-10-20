@@ -807,6 +807,51 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
     } else if (prov.contains('naya')) {
       bgColor = const Color(0xFFEA580C);
       initials = 'NP';
+    } else if (prov.contains('paypal')) {
+      bgColor = const Color(0xFF003087);
+      initials = 'PP';
+    } else if (prov.contains('cash app')) {
+      bgColor = const Color(0xFF00D632);
+      initials = 'CA';
+    } else if (prov.contains('venmo')) {
+      bgColor = const Color(0xFF008CFF);
+      initials = 'VM';
+    } else if (prov.contains('zelle')) {
+      bgColor = const Color(0xFF7414CA);
+      initials = 'ZL';
+    } else if (prov.contains('wise')) {
+      bgColor = const Color(0xFF9FE870);
+      initials = 'WISE';
+    } else if (prov.contains('revolut')) {
+      bgColor = const Color(0xFF191C1F);
+      initials = 'REV';
+    } else if (prov.contains('chase')) {
+      bgColor = const Color(0xFF117ACA);
+      initials = 'JPMC';
+    } else if (prov.contains('america') || prov.contains('bofa')) {
+      bgColor = const Color(0xFFE31837);
+      initials = 'BOA';
+    } else if (prov.contains('wells')) {
+      bgColor = const Color(0xFFD71E28);
+      initials = 'WF';
+    } else if (prov.contains('barclays')) {
+      bgColor = const Color(0xFF00AEEF);
+      initials = 'BARC';
+    } else if (prov.contains('hsbc')) {
+      bgColor = const Color(0xFFDB0011);
+      initials = 'HSBC';
+    } else if (prov.contains('emirates') || prov.contains('enbd')) {
+      bgColor = const Color(0xFF0A2540);
+      initials = 'ENBD';
+    } else if (prov.contains('rajhi')) {
+      bgColor = const Color(0xFF003882);
+      initials = 'RAJHI';
+    } else if (prov.contains('hdfc')) {
+      bgColor = const Color(0xFF004C8F);
+      initials = 'HDFC';
+    } else if (prov.contains('sbi') || prov.contains('state bank of india')) {
+      bgColor = const Color(0xFF280071);
+      initials = 'SBI';
     }
 
     return Stack(

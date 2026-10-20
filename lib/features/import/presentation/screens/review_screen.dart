@@ -26,6 +26,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   late TextEditingController _tidController;
   String _direction = 'received';
   String? _provider;
+  String _currency = 'PKR';
+  bool _isReceipt = true;
   Map<String, double> _confidences = {};
 
   @override
@@ -48,6 +50,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       final parsed = GenericParser().parse(entry.ocrText);
       _direction = parsed.direction;
       _provider = parsed.provider ?? 'JazzCash';
+      _currency = parsed.currency;
+      _isReceipt = parsed.isReceipt;
       _confidences = parsed.fieldConfidences;
 
       if (parsed.amountMinor != null) {
@@ -76,6 +80,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     await (db.update(db.entries)..where((tbl) => tbl.id.equals(widget.entryId))).write(
       EntriesCompanion(
         amountMinor: drift.Value(amountMinor),
+        currency: drift.Value(_currency),
         direction: drift.Value(directionEnum),
         counterpartyName: drift.Value(_counterpartyController.text.trim()),
         counterpartyAccountMasked: drift.Value(_accountController.text.trim()),
@@ -88,6 +93,29 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     if (mounted) context.pop();
   }
 
+  Future<void> _deleteEntry() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Discard Slip?'),
+        content: const Text('This will delete this screenshot from your vault.'),
+        actions: [
+          TextButton(onPressed: () => ctx.pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => ctx.pop(true),
+            child: const Text('Discard', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final db = ref.read(databaseProvider);
+      await (db.delete(db.entries)..where((tbl) => tbl.id.equals(widget.entryId))).go();
+      if (mounted) context.pop();
+    }
+  }
+
   @override
   void dispose() {
     _amountController.dispose();
@@ -95,6 +123,29 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     _accountController.dispose();
     _tidController.dispose();
     super.dispose();
+  }
+
+  String _getCurrencySymbol(String curr) {
+    switch (curr.toUpperCase()) {
+      case 'USD':
+        return r'$ ';
+      case 'EUR':
+        return '€ ';
+      case 'GBP':
+        return '£ ';
+      case 'AED':
+        return 'AED ';
+      case 'SAR':
+        return 'SAR ';
+      case 'INR':
+        return '₹ ';
+      case 'CAD':
+        return r'C$ ';
+      case 'AUD':
+        return r'A$ ';
+      default:
+        return 'Rs ';
+    }
   }
 
   @override
@@ -112,6 +163,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       appBar: AppBar(
         title: const Text('Review Slip'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: AppColors.error),
+            onPressed: _deleteEntry,
+            tooltip: 'Discard',
+          ),
           TextButton(
             onPressed: _saveEntry,
             child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -142,6 +198,67 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             ),
             const SizedBox(height: 16),
 
+            // Non-Receipt Warning Banner if photo is not a receipt
+            if (!_isReceipt) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFFD97706) : const Color(0xFFF59E0B),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Non-Payment Screenshot Detected',
+                          style: TextStyle(
+                            color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'This image does not appear to be a financial receipt or payment slip (no transaction ID or bank confirmation found). You can discard it, or edit the fields manually below.',
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFFFCD34D) : const Color(0xFF78350F),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.error,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon: const Icon(Icons.delete_outline, size: 16),
+                          label: const Text('Discard This Slip', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          onPressed: _deleteEntry,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // Direction Selector
             Text('PAYMENT DIRECTION', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
@@ -157,15 +274,18 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             const SizedBox(height: 16),
 
             // Amount Field
-            _ConfidenceLabel(label: 'AMOUNT (PKR)', confidence: _confidences['amount'] ?? 0.0),
+            _ConfidenceLabel(
+              label: 'AMOUNT ($_currency)',
+              confidence: _confidences['amount'] ?? 0.0,
+            ),
             const SizedBox(height: 4),
             TextField(
               controller: _amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                prefixText: 'Rs ',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                prefixText: _getCurrencySymbol(_currency),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),

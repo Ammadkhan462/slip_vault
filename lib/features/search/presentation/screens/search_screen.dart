@@ -58,6 +58,36 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       return ('MB', const Color(0xFF0D9488), const Color(0xFFF0FDFA));
     } else if (p.contains('hbl')) {
       return ('HBL', const Color(0xFF0F766E), const Color(0xFFF0FDFA));
+    } else if (p.contains('paypal')) {
+      return ('PP', const Color(0xFF003087), const Color(0xFFEFF6FF));
+    } else if (p.contains('cash app')) {
+      return ('CA', const Color(0xFF00D632), const Color(0xFFF0FDF4));
+    } else if (p.contains('venmo')) {
+      return ('VM', const Color(0xFF008CFF), const Color(0xFFF0F9FF));
+    } else if (p.contains('zelle')) {
+      return ('ZL', const Color(0xFF7414CA), const Color(0xFFFAF5FF));
+    } else if (p.contains('wise')) {
+      return ('WISE', const Color(0xFF9FE870), const Color(0xFFF7FEE7));
+    } else if (p.contains('revolut')) {
+      return ('REV', const Color(0xFF191C1F), const Color(0xFFF8FAFC));
+    } else if (p.contains('chase')) {
+      return ('JPMC', const Color(0xFF117ACA), const Color(0xFFF0F9FF));
+    } else if (p.contains('america') || p.contains('bofa')) {
+      return ('BOA', const Color(0xFFE31837), const Color(0xFFFEF2F2));
+    } else if (p.contains('wells')) {
+      return ('WF', const Color(0xFFD71E28), const Color(0xFFFEF2F2));
+    } else if (p.contains('barclays')) {
+      return ('BARC', const Color(0xFF00AEEF), const Color(0xFFF0F9FF));
+    } else if (p.contains('hsbc')) {
+      return ('HSBC', const Color(0xFFDB0011), const Color(0xFFFEF2F2));
+    } else if (p.contains('emirates') || p.contains('enbd')) {
+      return ('ENBD', const Color(0xFF0A2540), const Color(0xFFF0F9FF));
+    } else if (p.contains('rajhi')) {
+      return ('RAJHI', const Color(0xFF003882), const Color(0xFFEFF6FF));
+    } else if (p.contains('hdfc')) {
+      return ('HDFC', const Color(0xFF004C8F), const Color(0xFFEFF6FF));
+    } else if (p.contains('sbi') || p.contains('state bank of india')) {
+      return ('SBI', const Color(0xFF280071), const Color(0xFFFAF5FF));
     }
     return ('TX', const Color(0xFF64748B), const Color(0xFFF8FAFC));
   }

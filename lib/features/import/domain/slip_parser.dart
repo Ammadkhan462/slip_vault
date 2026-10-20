@@ -1,6 +1,6 @@
 /// Represents the outcome of parsing a slip's OCR text
 class ParsedSlip {
-  final int? amountMinor; // In paisa (e.g. 5000 = Rs 50)
+  final int? amountMinor; // In minor unit (e.g. 5000 = $50.00 or Rs 50.00)
   final String currency;
   final String direction; // 'received', 'sent', or 'unknown'
   final String? counterpartyName;
@@ -11,6 +11,7 @@ class ParsedSlip {
   final DateTime? occurredAt;
   final Map<String, double> fieldConfidences; // e.g. {'amount': 0.95, 'tid': 0.70}
   final bool needsReview;
+  final bool isReceipt; // False if screenshot is not a financial payment receipt
 
   const ParsedSlip({
     this.amountMinor,
@@ -24,6 +25,7 @@ class ParsedSlip {
     this.occurredAt,
     this.fieldConfidences = const {},
     this.needsReview = false,
+    this.isReceipt = true,
   });
 
   ParsedSlip copyWith({
@@ -38,6 +40,7 @@ class ParsedSlip {
     DateTime? occurredAt,
     Map<String, double>? fieldConfidences,
     bool? needsReview,
+    bool? isReceipt,
   }) {
     return ParsedSlip(
       amountMinor: amountMinor ?? this.amountMinor,
@@ -51,6 +54,7 @@ class ParsedSlip {
       occurredAt: occurredAt ?? this.occurredAt,
       fieldConfidences: fieldConfidences ?? this.fieldConfidences,
       needsReview: needsReview ?? this.needsReview,
+      isReceipt: isReceipt ?? this.isReceipt,
     );
   }
 }
