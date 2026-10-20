@@ -385,493 +385,499 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
               ),
             ),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Month Selector Bar & 1-Tap Auto-Sync
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight,
-                      borderRadius: BorderRadius.circular(9999),
-                    ),
+        child: StreamBuilder<List<Entry>>(
+          stream: db.select(db.entries).watch(),
+          builder: (context, snapshot) {
+            final allEntries = snapshot.data ?? [];
+
+            // Find duplicate TIDs for instant fraud detection badge
+            final duplicateTids = <String>{};
+            final seenTids = <String>{};
+            for (final e in allEntries) {
+              if (e.transactionId != null && e.transactionId!.trim().isNotEmpty) {
+                final tid = e.transactionId!.trim();
+                if (seenTids.contains(tid)) {
+                  duplicateTids.add(tid);
+                } else {
+                  seenTids.add(tid);
+                }
+              }
+            }
+
+            // Month entries
+            final monthEntries = allEntries.where((e) {
+              final date = e.occurredAt ?? e.createdAt;
+              return date.year == _selectedYear && date.month == _selectedMonth;
+            }).toList();
+
+            // Distinct currencies in current month
+            final availableCurrencies = monthEntries
+                .map((e) => e.currency.isNotEmpty ? e.currency.toUpperCase() : 'PKR')
+                .toSet()
+                .toList();
+
+            // Calculate live totals (respecting currency filter)
+            int received = 0;
+            int sent = 0;
+            int receivedCount = 0;
+            int sentCount = 0;
+            for (final e in monthEntries) {
+              if (_selectedCurrency != 'ALL' &&
+                  e.currency.toUpperCase() != _selectedCurrency.toUpperCase()) {
+                continue;
+              }
+              if (e.amountMinor != null) {
+                if (e.direction == Direction.received) {
+                  received += e.amountMinor!;
+                  receivedCount++;
+                } else if (e.direction == Direction.sent) {
+                  sent += e.amountMinor!;
+                  sentCount++;
+                }
+              }
+            }
+            final net = received - sent;
+
+            // Apply filter for the selected month
+            final filtered = monthEntries.where((e) {
+              if (_selectedCurrency != 'ALL' &&
+                  e.currency.toUpperCase() != _selectedCurrency.toUpperCase()) {
+                return false;
+              }
+              if (_selectedCategory != null && e.category != _selectedCategory) {
+                return false;
+              }
+              if (_activeFilter == VaultFilter.received) return e.direction == Direction.received;
+              if (_activeFilter == VaultFilter.sent) return e.direction == Direction.sent;
+              if (_activeFilter == VaultFilter.needsReview) return e.needsReview;
+              if (_activeFilter == VaultFilter.other) return e.kind == EntryKind.other;
+              return true;
+            }).toList();
+
+            final displayCurr = _selectedCurrency == 'ALL'
+                ? (availableCurrencies.isNotEmpty ? availableCurrencies.first : 'PKR')
+                : _selectedCurrency;
+
+            return CustomScrollView(
+              slivers: [
+                // Month Selector Bar & 1-Tap Auto-Sync
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: const Icon(Icons.chevron_left, size: 20),
-                          onPressed: () {
-                            setState(() {
-                              if (_selectedMonth == 1) {
-                                _selectedMonth = 12;
-                                _selectedYear--;
-                              } else {
-                                _selectedMonth--;
-                              }
-                            });
-                          },
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight,
+                            borderRadius: BorderRadius.circular(9999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.chevron_left, size: 20),
+                                onPressed: () {
+                                  setState(() {
+                                    if (_selectedMonth == 1) {
+                                      _selectedMonth = 12;
+                                      _selectedYear--;
+                                    } else {
+                                      _selectedMonth--;
+                                    }
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                monthLabel,
+                                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(width: 6),
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.chevron_right, size: 20),
+                                onPressed: () {
+                                  setState(() {
+                                    if (_selectedMonth == 12) {
+                                      _selectedMonth = 1;
+                                      _selectedYear++;
+                                    } else {
+                                      _selectedMonth++;
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          monthLabel,
-                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(width: 6),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: const Icon(Icons.chevron_right, size: 20),
-                          onPressed: () {
-                            setState(() {
-                              if (_selectedMonth == 12) {
-                                _selectedMonth = 1;
-                                _selectedYear++;
-                              } else {
-                                _selectedMonth++;
-                              }
-                            });
-                          },
+
+                        // 1-Tap Auto-Sync Screenshots Button
+                        InkWell(
+                          onTap: _isSyncingGallery ? null : _syncGalleryScreenshots,
+                          borderRadius: BorderRadius.circular(9999),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _isSyncingGallery
+                                  ? AppColors.primaryContainer.withOpacity(0.2)
+                                  : (isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight),
+                              borderRadius: BorderRadius.circular(9999),
+                              border: Border.all(
+                                color: AppColors.primaryContainer.withOpacity(0.5),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _isSyncingGallery
+                                    ? const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryContainer),
+                                      )
+                                    : const Icon(Icons.sync, size: 15, color: AppColors.primaryContainer),
+                                const SizedBox(width: 5),
+                                Text(
+                                  _isSyncingGallery ? 'Syncing...' : 'Auto-Sync',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: AppColors.primaryContainer,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
+                ),
 
-                  // 1-Tap Auto-Sync Screenshots Button
-                  InkWell(
-                    onTap: _isSyncingGallery ? null : _syncGalleryScreenshots,
-                    borderRadius: BorderRadius.circular(9999),
+                // Modern Deep Teal Gradient Hero Card with Multi-Currency Switcher
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: _isSyncingGallery
-                            ? AppColors.primaryContainer.withOpacity(0.2)
-                            : (isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight),
-                        borderRadius: BorderRadius.circular(9999),
-                        border: Border.all(
-                          color: AppColors.primaryContainer.withOpacity(0.5),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0F766E), Color(0xFF064E3B)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF0F766E).withOpacity(0.25),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _isSyncingGallery
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryContainer),
-                                )
-                              : const Icon(Icons.sync, size: 15, color: AppColors.primaryContainer),
-                          const SizedBox(width: 5),
-                          Text(
-                            _isSyncingGallery ? 'Syncing...' : 'Auto-Sync',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: AppColors.primaryContainer,
-                              fontWeight: FontWeight.bold,
+                          // Multi-Currency Pills Row (when more than 1 currency present)
+                          if (availableCurrencies.length > 1) ...[
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _buildCurrencyPill('ALL', _selectedCurrency == 'ALL'),
+                                  ...availableCurrencies.map((c) => _buildCurrencyPill(c, _selectedCurrency == c)),
+                                ],
+                              ),
                             ),
+                            const SizedBox(height: 10),
+                          ],
+
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    l10n?.netCashFlow ?? 'Net Cash Flow',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.22),
+                                      borderRadius: BorderRadius.circular(9999),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.shield_outlined, size: 12, color: Color(0xFF34D399)),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Audited Ledger',
+                                          style: TextStyle(
+                                            color: Color(0xFFD1FAE5),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.account_balance_wallet_outlined,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${net >= 0 ? '+' : '-'}$displayCurr ${(net.abs() / 100).toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.22),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            l10n?.totalReceived ?? 'Total Received',
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.8),
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF10B981).withOpacity(0.3),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              '+$receivedCount',
+                                              style: const TextStyle(
+                                                color: Color(0xFF6EE7B7),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '$displayCurr ${(received / 100).toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF34D399),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.22),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            l10n?.totalSent ?? 'Total Sent',
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.8),
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              '-$sentCount',
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '$displayCurr ${(sent / 100).toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
 
-            // Live Stream of Entries from Drift
-            Expanded(
-              child: StreamBuilder<List<Entry>>(
-                stream: db.select(db.entries).watch(),
-                builder: (context, snapshot) {
-                  final allEntries = snapshot.data ?? [];
-
-                  // Find duplicate TIDs for instant fraud detection badge
-                  final duplicateTids = <String>{};
-                  final seenTids = <String>{};
-                  for (final e in allEntries) {
-                    if (e.transactionId != null && e.transactionId!.trim().isNotEmpty) {
-                      final tid = e.transactionId!.trim();
-                      if (seenTids.contains(tid)) {
-                        duplicateTids.add(tid);
-                      } else {
-                        seenTids.add(tid);
-                      }
-                    }
-                  }
-
-                  // Month entries
-                  final monthEntries = allEntries.where((e) {
-                    final date = e.occurredAt ?? e.createdAt;
-                    return date.year == _selectedYear && date.month == _selectedMonth;
-                  }).toList();
-
-                  // Distinct currencies in current month
-                  final availableCurrencies = monthEntries
-                      .map((e) => e.currency.isNotEmpty ? e.currency.toUpperCase() : 'PKR')
-                      .toSet()
-                      .toList();
-
-                  // Calculate live totals (respecting currency filter)
-                  int received = 0;
-                  int sent = 0;
-                  int receivedCount = 0;
-                  int sentCount = 0;
-                  for (final e in monthEntries) {
-                    if (_selectedCurrency != 'ALL' &&
-                        e.currency.toUpperCase() != _selectedCurrency.toUpperCase()) {
-                      continue;
-                    }
-                    if (e.amountMinor != null) {
-                      if (e.direction == Direction.received) {
-                        received += e.amountMinor!;
-                        receivedCount++;
-                      } else if (e.direction == Direction.sent) {
-                        sent += e.amountMinor!;
-                        sentCount++;
-                      }
-                    }
-                  }
-                  final net = received - sent;
-
-                  // Apply filter for the selected month
-                  final filtered = monthEntries.where((e) {
-                    if (_selectedCurrency != 'ALL' &&
-                        e.currency.toUpperCase() != _selectedCurrency.toUpperCase()) {
-                      return false;
-                    }
-                    if (_selectedCategory != null && e.category != _selectedCategory) {
-                      return false;
-                    }
-                    if (_activeFilter == VaultFilter.received) return e.direction == Direction.received;
-                    if (_activeFilter == VaultFilter.sent) return e.direction == Direction.sent;
-                    if (_activeFilter == VaultFilter.needsReview) return e.needsReview;
-                    if (_activeFilter == VaultFilter.other) return e.kind == EntryKind.other;
-                    return true;
-                  }).toList();
-
-                  final displayCurr = _selectedCurrency == 'ALL'
-                      ? (availableCurrencies.isNotEmpty ? availableCurrencies.first : 'PKR')
-                      : _selectedCurrency;
-
-                  return Column(
-                    children: [
-                      // Modern Deep Teal Gradient Hero Card with Multi-Currency Switcher
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF0F766E), Color(0xFF064E3B)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0F766E).withOpacity(0.25),
-                                blurRadius: 16,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Multi-Currency Pills Row (when more than 1 currency present)
-                              if (availableCurrencies.length > 1) ...[
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: [
-                                      _buildCurrencyPill('ALL', _selectedCurrency == 'ALL'),
-                                      ...availableCurrencies.map((c) => _buildCurrencyPill(c, _selectedCurrency == c)),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                              ],
-
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        l10n?.netCashFlow ?? 'Net Cash Flow',
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(0.9),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black.withOpacity(0.22),
-                                          borderRadius: BorderRadius.circular(9999),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.shield_outlined, size: 12, color: Color(0xFF34D399)),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              'Audited Ledger',
-                                              style: TextStyle(
-                                                color: Color(0xFFD1FAE5),
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.12),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.account_balance_wallet_outlined,
-                                      size: 16,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                '${net >= 0 ? '+' : '-'}$displayCurr ${(net.abs() / 100).toStringAsFixed(0)}',
-                                style: const TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.22),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                l10n?.totalReceived ?? 'Total Received',
-                                                style: TextStyle(
-                                                  color: Colors.white.withOpacity(0.8),
-                                                  fontSize: 11,
-                                                ),
-                                              ),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFF10B981).withOpacity(0.3),
-                                                  borderRadius: BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  '+$receivedCount',
-                                                  style: const TextStyle(
-                                                    color: Color(0xFF6EE7B7),
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '$displayCurr ${(received / 100).toStringAsFixed(0)}',
-                                            style: const TextStyle(
-                                              color: Color(0xFF34D399),
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.22),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                l10n?.totalSent ?? 'Total Sent',
-                                                style: TextStyle(
-                                                  color: Colors.white.withOpacity(0.8),
-                                                  fontSize: 11,
-                                                ),
-                                              ),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white.withOpacity(0.15),
-                                                  borderRadius: BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  '-$sentCount',
-                                                  style: const TextStyle(
-                                                    color: Colors.white70,
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '$displayCurr ${(sent / 100).toStringAsFixed(0)}',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                // Filter Chips (Type & Categories)
+                SliverToBoxAdapter(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    child: Row(
+                      children: [
+                        _FilterChipItem(
+                          label: l10n?.all ?? 'All',
+                          isSelected: _activeFilter == VaultFilter.all && _selectedCategory == null,
+                          onTap: () => setState(() {
+                            _activeFilter = VaultFilter.all;
+                            _selectedCategory = null;
+                          }),
                         ),
-                      ),
-
-                      // Filter Chips (Type & Categories)
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        child: Row(
-                          children: [
-                            _FilterChipItem(
-                              label: l10n?.all ?? 'All',
-                              isSelected: _activeFilter == VaultFilter.all && _selectedCategory == null,
-                              onTap: () => setState(() {
-                                _activeFilter = VaultFilter.all;
-                                _selectedCategory = null;
+                        const SizedBox(width: 6),
+                        _FilterChipItem(
+                          label: '${l10n?.received ?? 'Received'} $receivedCount',
+                          isSelected: _activeFilter == VaultFilter.received,
+                          onTap: () => setState(() => _activeFilter = VaultFilter.received),
+                        ),
+                        const SizedBox(width: 6),
+                        _FilterChipItem(
+                          label: '${l10n?.sent ?? 'Sent'} $sentCount',
+                          isSelected: _activeFilter == VaultFilter.sent,
+                          onTap: () => setState(() => _activeFilter = VaultFilter.sent),
+                        ),
+                        const SizedBox(width: 6),
+                        _FilterChipItem(
+                          label: l10n?.needsReview ?? 'Needs Review',
+                          isSelected: _activeFilter == VaultFilter.needsReview,
+                          onTap: () => setState(() => _activeFilter = VaultFilter.needsReview),
+                        ),
+                        const SizedBox(width: 6),
+                        // Quick Category Filters
+                        ...SlipCategories.all.take(4).map((cat) {
+                          final isSelected = _selectedCategory == cat.id;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: FilterChip(
+                              avatar: Icon(cat.icon, size: 14, color: isSelected ? Colors.white : cat.color),
+                              label: Text(cat.name),
+                              selected: isSelected,
+                              onSelected: (_) => setState(() {
+                                _selectedCategory = isSelected ? null : cat.id;
                               }),
+                              selectedColor: cat.color,
+                              labelStyle: TextStyle(
+                                color: isSelected ? Colors.white : null,
+                                fontSize: 12,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
                             ),
-                            const SizedBox(width: 6),
-                            _FilterChipItem(
-                              label: '${l10n?.received ?? 'Received'} $receivedCount',
-                              isSelected: _activeFilter == VaultFilter.received,
-                              onTap: () => setState(() => _activeFilter = VaultFilter.received),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Filtered entries list or empty state
+                if (filtered.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.receipt_outlined,
+                                size: 48,
+                                color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
+                              ),
                             ),
-                            const SizedBox(width: 6),
-                            _FilterChipItem(
-                              label: '${l10n?.sent ?? 'Sent'} $sentCount',
-                              isSelected: _activeFilter == VaultFilter.sent,
-                              onTap: () => setState(() => _activeFilter = VaultFilter.sent),
+                            const SizedBox(height: 16),
+                            Text(
+                              l10n?.emptyVaultTitle ?? 'No slips found',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(width: 6),
-                            _FilterChipItem(
-                              label: l10n?.needsReview ?? 'Needs Review',
-                              isSelected: _activeFilter == VaultFilter.needsReview,
-                              onTap: () => setState(() => _activeFilter = VaultFilter.needsReview),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Tap Auto-Sync to fetch new screenshots from your gallery, or import manually.',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
+                              ),
                             ),
-                            const SizedBox(width: 6),
-                            // Quick Category Filters
-                            ...SlipCategories.all.take(4).map((cat) {
-                              final isSelected = _selectedCategory == cat.id;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: FilterChip(
-                                  avatar: Icon(cat.icon, size: 14, color: isSelected ? Colors.white : cat.color),
-                                  label: Text(cat.name),
-                                  selected: isSelected,
-                                  onSelected: (_) => setState(() {
-                                    _selectedCategory = isSelected ? null : cat.id;
-                                  }),
-                                  selectedColor: cat.color,
-                                  labelStyle: TextStyle(
-                                    color: isSelected ? Colors.white : null,
-                                    fontSize: 12,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  ),
-                                ),
-                              );
-                            }),
                           ],
                         ),
                       ),
-
-                      // Filtered entries list
-                      Expanded(
-                        child: filtered.isEmpty
-                            ? Center(
-                                child: SingleChildScrollView(
-                                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(20),
-                                        decoration: BoxDecoration(
-                                          color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.receipt_outlined,
-                                          size: 48,
-                                          color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        l10n?.emptyVaultTitle ?? 'No slips found',
-                                        textAlign: TextAlign.center,
-                                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Tap Auto-Sync to fetch new screenshots from your gallery, or import manually.',
-                                        textAlign: TextAlign.center,
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            : ListView.separated(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                                itemCount: filtered.length,
-                                separatorBuilder: (context, index) => const SizedBox(height: 8),
-                                itemBuilder: (context, index) {
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    sliver: SliverList.separated(
+                      itemCount: filtered.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
                                   final item = filtered[index];
                                   final isReceived = item.direction == Direction.received;
                                   final amt = item.amountMinor != null ? (item.amountMinor! / 100).toStringAsFixed(0) : '0';
@@ -1140,15 +1146,12 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                                   );
                                 },
                               ),
-                      ),
+                            ),
                     ],
                   );
                 },
               ),
-            ),
-          ],
         ),
-      ),
       bottomNavigationBar: const VaultBottomBar(currentIndex: 0),
     );
   }
