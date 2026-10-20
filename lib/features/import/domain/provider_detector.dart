@@ -6,6 +6,7 @@ class ProviderDetector {
     'SadaPay': ['sadapay', 'sada pay', 'sada biz'],
     'NayaPay': ['nayapay', 'naya pay'],
     'Raast': ['raast', 'state bank of pakistan', 'sbp raast'],
+    'Faysal Bank': ['faysalbank', 'faysal bank', 'faysal', 'fbl'],
     'HBL': ['hbl', 'habib bank', 'konnect'],
     'Meezan Bank': ['meezan', 'meezan bank'],
     'Bank Alfalah': ['bank alfalah', 'alfalah'],
@@ -17,6 +18,18 @@ class ProviderDetector {
   /// Returns detected provider name based on earliest appearance in receipt
   static String? detect(String text) {
     final lower = text.toLowerCase();
+
+    // Prioritize explicit sender: "sent from easypaisa to receiver"
+    final sentFromMatch = RegExp(r'sent\s+from\s+([A-Za-z0-9\s]+?)\s+to', caseSensitive: false).firstMatch(text);
+    if (sentFromMatch != null) {
+      final senderPhrase = sentFromMatch.group(1)!.toLowerCase();
+      for (final entry in _providerKeywords.entries) {
+        for (final kw in entry.value) {
+          if (senderPhrase.contains(kw)) return entry.key;
+        }
+      }
+    }
+
     String? bestProvider;
     int earliestIndex = 999999;
 

@@ -85,29 +85,67 @@ class GenericParser implements SlipParser {
       }
     }
 
+    // Multi-line fallback: line with digits (e.g. "700" then ".00" in Easypaisa)
+    final lines = text.split('\n').map((l) => l.trim()).toList();
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      if (line.contains(':') || line.length > 10) continue;
+      final numMatch = RegExp(r'^([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)$').firstMatch(line);
+      if (numMatch != null) {
+        double? val = double.tryParse(numMatch.group(1)!.replaceAll(',', ''));
+        if (val != null && val > 0 && val < 5000000) {
+          if (i + 1 < lines.length && RegExp(r'^\.[0-9]{1,2}$').hasMatch(lines[i + 1])) {
+            val += double.tryParse(lines[i + 1]) ?? 0;
+          } else if (i + 2 < lines.length && RegExp(r'^\.[0-9]{1,2}$').hasMatch(lines[i + 2])) {
+            val += double.tryParse(lines[i + 2]) ?? 0;
+          }
+          final lower = text.toLowerCase();
+          if (lower.contains('rs') || lower.contains('pkr') || lower.contains('sent') ||
+              lower.contains('received') || lower.contains('payment') || lower.contains('transfer')) {
+            conf['amount'] = 0.85;
+            return (val * 100).round();
+          }
+        }
+      }
+    }
+
     conf['amount'] = 0.0;
     return null;
   }
 
   String _extractDirection(String text, Map<String, double> conf) {
     final lower = text.toLowerCase();
-    if (lower.contains('received') ||
-        lower.contains('credited') ||
-        lower.contains('money received') ||
+
+    // Explicit Received
+    if (lower.contains('money received') ||
         lower.contains('payment received') ||
-        lower.contains('from:')) {
+        lower.contains('cash in') ||
+        lower.contains('credited to') ||
+        lower.contains('received from')) {
       conf['direction'] = 0.90;
       return 'received';
     }
-    if (lower.contains(' to ') ||
-        lower.contains('sent') ||
+
+    // Explicit Sent / Transfer
+    if (lower.contains('successfully sent') ||
+        lower.contains('money has been sent') ||
+        lower.contains('paid to') ||
+        lower.contains('sent to') ||
         lower.contains('debited') ||
         lower.contains('transferred') ||
         lower.contains('payment successful') ||
-        lower.contains('paid to')) {
+        lower.contains('transaction status successful') ||
+        RegExp(r'\bto\b', caseSensitive: false).hasMatch(text) ||
+        RegExp(r'\bsent\b', caseSensitive: false).hasMatch(text)) {
       conf['direction'] = 0.90;
       return 'sent';
     }
+
+    if (lower.contains('received') || lower.contains('credited')) {
+      conf['direction'] = 0.90;
+      return 'received';
+    }
+
     conf['direction'] = 0.50;
     return 'unknown';
   }
@@ -134,27 +172,41 @@ class GenericParser implements SlipParser {
   String? _extractCounterparty(String text, Map<String, double> conf) {
     // 1. Matches: "Sender to Receiver" e.g. "Ammad Ul Hassan Khan to IRFAN NAEEM"
     final toPattern = RegExp(
-      r'[A-Za-z\s]+ to ([A-Za-z0-9\s&.-]{3,35})',
+      r'[A-Za-z\s]+ to[\s\n]+([A-Za-z0-9\s&.-]{3,35})',
       caseSensitive: false,
     );
     final toMatch = toPattern.firstMatch(text);
     if (toMatch != null) {
-      final name = toMatch.group(1)!.trim().split('\n').first;
-      if (name.length > 2 && !name.toLowerCase().contains('account')) {
+      final name = toMatch.group(1)!.trim().split('\n').first.trim();
+      if (name.length > 2 && !name.toLowerCase().contains('account') && !name.toLowerCase().contains('receiver')) {
         conf['counterparty'] = 0.85;
         return name;
       }
     }
 
-    // 2. Matches: "To: John Doe", "From: Kashif Electronics", "Sent to: Ali", "Paid to: K-Electric Ltd"
+    // 2. Matches: "Successfully Sent to\nAmmad UI Hassan Khan" or "Sent to: Ali"
+    final sentToPattern = RegExp(
+      r'(?:successfully\s+sent\s+to|sent\s+to|paid\s+to|received\s+from)[:\s\n]+([A-Za-z0-9\s&.-]{3,40})',
+      caseSensitive: false,
+    );
+    final sentToMatch = sentToPattern.firstMatch(text);
+    if (sentToMatch != null) {
+      final name = sentToMatch.group(1)!.trim().split('\n').first.trim();
+      if (name.length > 2 && !name.toLowerCase().contains('receiver') && !name.toLowerCase().contains('account')) {
+        conf['counterparty'] = 0.85;
+        return name;
+      }
+    }
+
+    // 3. Matches: "To: John Doe", "From: Kashif Electronics", "From\nSHAHID ABUBAKAR"
     final regex = RegExp(
-      r'(?:To|From|Sent\s+to|Received\s+from|Paid\s+to)[:\s]+([A-Za-z0-9\s&.-]{3,40})',
+      r'(?:To|From)[:\s\n]+([A-Za-z0-9\s&.-]{3,40})',
       caseSensitive: false,
     );
     final match = regex.firstMatch(text);
     if (match != null) {
-      final name = match.group(1)!.trim().split('\n').first;
-      if (name.length > 2) {
+      final name = match.group(1)!.trim().split('\n').first.trim();
+      if (name.length > 2 && !name.toLowerCase().contains('receiver') && !name.toLowerCase().contains('account')) {
         conf['counterparty'] = 0.85;
         return name;
       }

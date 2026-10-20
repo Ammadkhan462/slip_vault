@@ -37,7 +37,7 @@ class _DetailScreenState extends ConsumerState<DetailScreen> {
     final db = ref.read(databaseProvider);
     var entry = await (db.select(db.entries)..where((tbl) => tbl.id.equals(widget.entryId))).getSingleOrNull();
 
-    if (entry != null && entry.amountMinor == null && entry.ocrText.isNotEmpty) {
+    if (entry != null && (entry.amountMinor == null || entry.direction == Direction.unknown) && entry.ocrText.isNotEmpty) {
       final parsed = GenericParser().parse(entry.ocrText);
       Direction dir = Direction.unknown;
       if (parsed.direction == 'received') dir = Direction.received;

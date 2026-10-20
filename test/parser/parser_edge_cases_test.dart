@@ -130,6 +130,59 @@ void main() {
       expect(result.occurredAt, equals(DateTime(2026, 9, 12)));
     });
 
+    test('Parses Faysal Bank transfer receipt fixture', () {
+      const fixture = '''
+      faysalbank
+      Transaction Status Successful
+      PKR 800.00
+      From
+      SHAHID ABUBAKAR
+      PK**FAYS************41 18
+      Current Account
+      >>>
+      Date: 19/10/2026
+      To
+      AK
+      AMMAD UL HASSAN KHAN
+      Transaction ID: 379476
+      03*******62
+      SadaPay
+      Purpose of Payment: Others
+      Time: 19:45:01
+      ''';
+
+      final result = parser.parse(fixture);
+      expect(result.provider, equals('Faysal Bank'));
+      expect(result.amountMinor, equals(80000));
+      expect(result.direction, equals('sent'));
+      expect(result.counterpartyName, equals('SHAHID ABUBAKAR'));
+      expect(result.transactionId, equals('379476'));
+      expect(result.occurredAt, equals(DateTime(2026, 10, 19)));
+    });
+
+    test('Parses Easypaisa multiline amount receipt fixture', () {
+      const fixture = '''
+      Rs
+      View Receipt
+      o Share
+      700
+      Important Details for you
+      .00
+      Successfully Sent to
+      Ammad UI Hassan Khan
+      SadaPay
+      A 03******************8462
+      Money has been sent from easypaisa to receiver's bank account.
+      To confirm check with the receiver
+      ''';
+
+      final result = parser.parse(fixture);
+      expect(result.provider, equals('Easypaisa'));
+      expect(result.amountMinor, equals(70000));
+      expect(result.direction, equals('sent'));
+      expect(result.counterpartyName, equals('Ammad UI Hassan Khan'));
+    });
+
     test('Parses Meezan Bank invoice payment fixture', () {
       const fixture = '''
       Meezan Bank
