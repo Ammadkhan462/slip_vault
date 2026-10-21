@@ -95,4 +95,12 @@ gradle.projectsEvaluated {
             coreApk.copyTo(fallbackApk, overwrite = true)
         }
     }
+    tasks.findByName("assembleRelease")?.doLast {
+        val buildDir = layout.buildDirectory.get().asFile
+        val coreApk = File(buildDir, "outputs/flutter-apk/app-core-release.apk")
+        val fallbackApk = File(buildDir, "outputs/flutter-apk/app-release.apk")
+        if (coreApk.exists()) {
+            coreApk.copyTo(fallbackApk, overwrite = true)
+        }
+    }
 }
