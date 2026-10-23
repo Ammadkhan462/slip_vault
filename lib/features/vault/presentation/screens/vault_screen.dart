@@ -450,6 +450,13 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                   ),
                 ],
               ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  tooltip: 'Pick Screenshot / Slip',
+                  onPressed: _isSyncingGallery ? null : _pickAndSyncFromGallery,
+                ),
+              ],
             ),
       body: SafeArea(
         child: StreamBuilder<List<Entry>>(
@@ -583,43 +590,107 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                           ),
                         ),
 
-                        // 1-Tap Auto-Sync Screenshots Button
-                        InkWell(
-                          key: _autoSyncKey,
-                          onTap: _isSyncingGallery ? null : _syncGalleryScreenshots,
-                          borderRadius: BorderRadius.circular(9999),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: _isSyncingGallery
-                                  ? AppColors.primaryContainer.withOpacity(0.2)
-                                  : (isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight),
-                              borderRadius: BorderRadius.circular(9999),
-                              border: Border.all(
-                                color: AppColors.primaryContainer.withOpacity(0.5),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _isSyncingGallery
-                                    ? const SizedBox(
-                                        width: 14,
-                                        height: 14,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryContainer),
-                                      )
-                                    : const Icon(Icons.sync, size: 15, color: AppColors.primaryContainer),
-                                const SizedBox(width: 5),
-                                Text(
-                                  _isSyncingGallery ? 'Syncing...' : 'Auto-Sync',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: AppColors.primaryContainer,
-                                    fontWeight: FontWeight.bold,
+                        // Action Buttons: Prominent Auto-Sync + Paired Pick Button
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // 1-Tap Auto-Sync Screenshots Button (Prominent Call-to-Action)
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                key: _autoSyncKey,
+                                onTap: _isSyncingGallery ? null : _syncGalleryScreenshots,
+                                borderRadius: BorderRadius.circular(9999),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: _isSyncingGallery
+                                          ? [
+                                              const Color(0xFF0F766E).withOpacity(0.6),
+                                              const Color(0xFF0D9488).withOpacity(0.6)
+                                            ]
+                                          : [const Color(0xFF0F766E), const Color(0xFF0D9488)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(9999),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF0F766E).withOpacity(_isSyncingGallery ? 0.15 : 0.35),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _isSyncingGallery
+                                          ? const SizedBox(
+                                              width: 14,
+                                              height: 14,
+                                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                            )
+                                          : const Icon(Icons.sync_rounded, size: 16, color: Colors.white),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        _isSyncingGallery ? 'Syncing...' : 'Auto-Sync',
+                                        style: theme.textTheme.labelMedium?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
+
+                            const SizedBox(width: 6),
+
+                            // Manual Screenshot / Slip Picker Button
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _isSyncingGallery ? null : _pickAndSyncFromGallery,
+                                borderRadius: BorderRadius.circular(9999),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6.5),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLowLight,
+                                    borderRadius: BorderRadius.circular(9999),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? const Color(0xFF2DD4BF).withOpacity(0.5)
+                                          : AppColors.primaryContainer.withOpacity(0.4),
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.add_photo_alternate_outlined,
+                                        size: 15,
+                                        color: isDark ? const Color(0xFF2DD4BF) : AppColors.primaryContainer,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Pick',
+                                        style: theme.textTheme.labelMedium?.copyWith(
+                                          color: isDark ? const Color(0xFF2DD4BF) : AppColors.primaryContainer,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -935,6 +1006,46 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: isDark ? AppColors.onSurfaceVariantDark : AppColors.onSurfaceVariantLight,
                               ),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ElevatedButton.icon(
+                                  icon: _isSyncingGallery
+                                      ? const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        )
+                                      : const Icon(Icons.sync_rounded, size: 16),
+                                  label: Text(_isSyncingGallery ? 'Syncing...' : 'Auto-Sync'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF0F766E),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9999)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    elevation: 2,
+                                  ),
+                                  onPressed: _isSyncingGallery ? null : _syncGalleryScreenshots,
+                                ),
+                                const SizedBox(width: 10),
+                                OutlinedButton.icon(
+                                  icon: const Icon(Icons.add_photo_alternate_outlined, size: 16),
+                                  label: const Text('Pick Slip'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: isDark ? const Color(0xFF2DD4BF) : AppColors.primaryContainer,
+                                    side: BorderSide(
+                                      color: isDark
+                                          ? const Color(0xFF2DD4BF).withOpacity(0.5)
+                                          : AppColors.primaryContainer.withOpacity(0.5),
+                                    ),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9999)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  ),
+                                  onPressed: _isSyncingGallery ? null : _pickAndSyncFromGallery,
+                                ),
+                              ],
                             ),
                           ],
                         ),
